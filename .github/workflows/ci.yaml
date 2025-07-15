@@ -50,6 +50,9 @@ jobs:
     - name: Patch wheel
       run: ./patch_maturin_wheel.sh
 
+    - name: Check wheel integrity
+      run: twine check dist/*
+
     - name: Upload wheel as artifact
       uses: actions/upload-artifact@v4
       with:
@@ -74,9 +77,6 @@ jobs:
 
     - name: Install Twine
       run: pip install twine
-
-    - name: Check wheel integrity
-      run: twine check final/*
 
     - name: Upload to PyPI
       env:
