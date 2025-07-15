@@ -18,7 +18,7 @@ classifiers = [
 
 [project.urls]
 "Homepage" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/blob/main/bindings/python/nbis-py/README.md"
-"Repository" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
+"Repository" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/blob/main/bindings/python/nbis-py/README.md"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
@@ -30,3 +30,4 @@ manifest-path = "Cargo.toml"
 python-source = "bindings/python/nbis-py"
 module-name = "nbis"
 bindings = "uniffi"
+include = ["LICENSE"]
