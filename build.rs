@@ -1,0 +1,53 @@
+// build.rs
+fn main() {
+    cc::Build::new()
+        .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c")
+        .file("ext/nbis/bozorth/src/lib/bozorth3/bz_alloc.c")
+        .file("ext/nbis/bozorth/src/lib/bozorth3/bz_drvrs.c")
+        .file("ext/nbis/bozorth/src/lib/bozorth3/bz_gbls.c")
+        .file("ext/nbis/bozorth/src/lib/bozorth3/bz_io.c")
+        .file("ext/nbis/bozorth/src/lib/bozorth3/bz_sort.c")
+        .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth_glue.c")
+        .include("ext/nbis/bozorth/include") // to find bozorth.h
+        .define("NOVERBOSE", None) // you probably don’t want stdout spam
+        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
+        .compile("bozorth3");
+
+    cc::Build::new()
+        .file("ext/nbis/mindtct/src/lib/mindtct/log.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/line.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/contour.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/imgutil.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/quality.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/block.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/loop.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/mytime.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/minutia.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/link.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/matchpat.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/binar.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/morph.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/chaincod.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/detect.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/dft.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/free.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/globals.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/init.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/isempty.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/remove.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/ridges.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/shape.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/sort.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/util.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/maps.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/xytreps.c")
+        .file("ext/nbis/mindtct/src/lib/mindtct/getmin.c")
+        .include("ext/nbis/mindtct/include") // to find bozorth.h
+        .define("NOVERBOSE", None) // you probably don’t want stdout spam
+        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
+        .compile("mindtct");
+
+    // Automatically re-run build.rs if these files change
+    println!("cargo:rerun-if-changed=ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c");
+    println!("cargo:rerun-if-changed=ext/nbis/bozorth/include");
+}
