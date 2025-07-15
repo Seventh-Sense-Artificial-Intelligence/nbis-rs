@@ -1,6 +1,6 @@
 [project]
 name = "nbis-py"
-version = "0.1.1"
+version = "0.1.2"
 description = "Python bindings for NBIS fingerprint processing using Rust + UniFFI"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -16,8 +16,8 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/blob/main/bindings/python/nbis-py/README.md"
-"Repository" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/blob/main/bindings/python/nbis-py/README.md"
+"Homepage" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
+"Repository" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
