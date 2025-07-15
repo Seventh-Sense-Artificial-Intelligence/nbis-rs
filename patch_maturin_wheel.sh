@@ -11,6 +11,10 @@ wheel_unzip_dir=$(mktemp -d)
 # Unzip wheel into temp dir
 unzip "$wheel_file" -d "$wheel_unzip_dir"
 
+echo "🚫 Removing License-File: from METADATA..."
+metadata_file=$(find "$wheel_unzip_dir" -name METADATA)
+sed -i '' '/^License-File:/d' "$metadata_file"
+
 # Rename libuniffi_nbis.* → libnbis.*
 for f in "$wheel_unzip_dir"/nbis/libuniffi_nbis.*; do
     mv "$f" "${f/libuniffi_nbis/libnbis}"
