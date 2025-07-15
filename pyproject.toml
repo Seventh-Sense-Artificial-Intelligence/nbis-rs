@@ -1,0 +1,32 @@
+[project]
+name = "nbis-py"
+version = "0.1.0"
+description = "Python bindings for NBIS fingerprint processing using Rust + UniFFI"
+readme = "README.md"
+requires-python = ">=3.7"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Varun Chatterji", email = "varun@seventhsense.ai" }
+]
+keywords = ["fingerprint", "nbis", "biometrics", "rust", "uniffi"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Rust",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
+"Repository" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+# Point maturin to your Rust crate root
+manifest-path = "Cargo.toml"
+python-source = "bindings/python/nbis-py"
+module-name = "nbis"
+bindings = "uniffi"

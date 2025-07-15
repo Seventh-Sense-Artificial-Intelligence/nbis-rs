@@ -19,3 +19,39 @@ jobs:
         override: true
     - name: Run tests
       run: cargo test --release --all
+
+  build-python-bindings:
+    name: Build Python Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Install Python + maturin
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install maturin
+      run: pip install maturin
+
+    - name: Build wheel
+      run: maturin build --release --manifest-path Cargo.toml --out dist
+
+    - name: Patch wheel
+      run: ./patch_maturin_wheel.sh
+
+    - name: Upload wheel artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheel-${{ matrix.os }}
+        path: dist/*.whl
