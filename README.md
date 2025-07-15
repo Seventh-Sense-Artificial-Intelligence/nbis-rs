@@ -1,5 +1,7 @@
 ## NBIS-rs
 
+[![CI](https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/actions/workflows/ci.yaml/badge.svg)](https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/actions/workflows/ci.yaml)
+
 This is a Rust binding to the NIST Biometric Image Software (NBIS) library, which is used for processing biometric images, particularly in the context of fingerprint recognition.
 
 ## Features
