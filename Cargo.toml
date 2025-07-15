@@ -3,6 +3,19 @@ name = "nbis-rs"
 version = "0.1.0"
 edition = "2021"
 
+authors = ["Varun Chatterji <varun@seventhsense.ai>"]
+description = "A Rust binding to the NIST Biometric Image Software (NBIS) library, which is used for processing biometric images, particularly in the context of fingerprint recognition"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
+homepage = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
+documentation = "https://docs.rs/nbis-rs"
+keywords = ["biometrics", "fingerprint", "nbis"]
+categories = ["algorithms", "api-bindings"]
+
+# Optional but recommended:
+exclude = ["/.github", "/examples", "test_data", "scripts"]
+
 [[bin]]
 name = "uniffi-bindgen"
 path = "uniffi_bindgen.rs"
