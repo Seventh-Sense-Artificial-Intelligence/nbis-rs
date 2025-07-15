@@ -17,8 +17,8 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
-"Repository" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs"
+"Homepage" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/bindings/python/nbis-py"
+"Repository" = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/bindings/python/nbis-py"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]

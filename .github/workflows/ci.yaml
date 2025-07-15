@@ -42,7 +42,7 @@ jobs:
         python-version: '3.10'
 
     - name: Install maturin
-      run: pip install maturin
+      run: pip install maturin twine
 
     - name: Build wheel
       run: maturin build --release --manifest-path Cargo.toml --out dist
@@ -50,8 +50,13 @@ jobs:
     - name: Patch wheel
       run: ./patch_maturin_wheel.sh
 
-    - name: Upload wheel artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: wheel-${{ matrix.os }}
-        path: dist/*.whl
+    - name: Check wheel integrity
+      run: |
+        twine check dist/*
+
+    - name: Publish to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        twine upload dist/*
