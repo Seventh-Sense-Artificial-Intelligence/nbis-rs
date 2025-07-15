@@ -1,6 +1,6 @@
 [project]
 name = "nbis-py"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python bindings for NBIS fingerprint processing using Rust + UniFFI"
 readme = "README.md"
 requires-python = ">=3.7"
