@@ -36,7 +36,15 @@ impl Minutiae {
         let p = to_nist_xyt_set(self);
         let g = to_nist_xyt_set(other);
         //println!("Matching {} vs {}", p.xs.len(), g.xs.len());
-        bz_match_score(&p, &g)
+        let score = bz_match_score(&p, &g);
+        // #define QQ_SIZE 4000
+        //#define QQ_OVERFLOW_SCORE QQ_SIZE
+        // If the score is greater than QQ_SIZE, it indicates an overflow condition.
+        if score == 4000 {
+            0 // Just return 0 for overflow
+        } else {
+            score // Return the actual score
+        }
     }
 
     /// Returns a vector of `Minutia` objects representing the minutiae in this set.
