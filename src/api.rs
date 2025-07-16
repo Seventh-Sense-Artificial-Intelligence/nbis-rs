@@ -541,8 +541,8 @@ mod tests {
         );
         // Quality should be very good for this image
         assert!(
-            res.nfiq == NfiqQuality::Poor,
-            "NFIQ for p1_1 should be Poor"
+            res.nfiq == NfiqQuality::Excellent,
+            "NFIQ for p1_1 should be Excellent"
         );
 
         // Test a non-fingerprint image
