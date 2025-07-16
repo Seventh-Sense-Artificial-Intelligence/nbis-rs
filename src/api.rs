@@ -11,22 +11,43 @@ use imageproc::rect::Rect;
 use crate::consts::MM_PER_INCH;
 use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
-use crate::ffi::{comp_nfiq, free, free_minutiae, get_minutiae, LFSPARMS, MINUTIAE};
+use crate::ffi::{
+    comp_nfiq, free, free_minutiae, get_minutiae, EMPTY_IMG, LFSPARMS, MINUTIAE, TOO_FEW_MINUTIAE,
+};
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
 
+/// Represents the result of the NFIQ computation.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct NfiqResult {
+    /// The NFIQ quality score.
+    /// 1 = Excellent, 2 = Very Good, 3 = Good,
+    /// 4 = Fair, 5 = Poor.
+    /// See [`NfiqQuality`] for more details.
     pub nfiq: NfiqQuality,
+    /// The confidence level of the NFIQ score.
+    /// A value between 0.0 and 1.0, where 1.0 means very confident.
+    /// This is a floating point value.
     pub confidence: f32,
 }
 
+/// Represents the quality of a fingerprint image as determined by NFIQ.
 #[derive(Debug, Clone, PartialEq, PartialOrd, uniffi::Enum)]
 pub enum NfiqQuality {
+    /// Excellent quality fingerprint image.
+    /// This means the image is very clear and suitable for fingerprint recognition.
     Excellent = 1,
+    /// Very good quality fingerprint image.
+    /// This means the image is clear but may have some minor issues.
     VeryGood = 2,
+    /// Good quality fingerprint image.
+    /// This means the image is usable but has noticeable issues.
     Good = 3,
+    /// Fair quality fingerprint image.
+    /// This means the image is barely usable for fingerprint recognition.
     Fair = 4,
+    /// Poor quality fingerprint image.
+    /// This means the image is not usable for fingerprint recognition.
     Poor = 5,
 }
 
@@ -89,6 +110,20 @@ pub fn compute_nfiq(image: &[u8], ppi: Option<f64>) -> Result<NfiqResult, NbisEr
             &mut optflag,
         )
     };
+
+    if rc == TOO_FEW_MINUTIAE {
+        return Ok(NfiqResult {
+            nfiq: NfiqQuality::Poor,
+            confidence: 1.0,
+        }); // Poor quality if too few minutiae
+    }
+
+    if rc == EMPTY_IMG {
+        return Ok(NfiqResult {
+            nfiq: NfiqQuality::Poor,
+            confidence: 1.0,
+        }); // Poor quality for empty images
+    }
 
     if rc != 0 {
         return Err(NbisError::UnexpectedError(rc as i64));

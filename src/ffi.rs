@@ -38,6 +38,8 @@ pub(crate) fn ensure_bozorth_inited() {
 }
 
 pub const MAX_BOZORTH_MINUTIAE: usize = 200; // <-- match bozorth.h
+pub const TOO_FEW_MINUTIAE: c_int = 2; // <-- match nfiq.h
+pub const EMPTY_IMG: c_int = 1; // <-- match nfiq.h
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
