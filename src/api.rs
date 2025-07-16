@@ -563,4 +563,51 @@ mod tests {
             "NFIQ for non-fingerprint image should be Poor"
         );
     }
+
+    #[test]
+    fn test_negative() {      
+        //Try to extract minutae from a file that is not an image
+        let res1 = extract_minutiae_from_image_file("build.rs", None);
+
+        // Check if the result is an error
+        assert!(res1.is_err(), "Expected an error but got Ok");
+    
+        match res1 {
+            Err(NbisError::ImageLoadError) => {
+                // This is the expected variant — success!
+            }
+            Err(other) => panic!("Expected ImageLoadError but got: {:?}", other),
+            Ok(_) => panic!("Expected error but got Ok"),
+        }
+
+        //Try to extract minutae from a file that does not exist
+        let res2 = extract_minutiae_from_image_file("test_data/negative/x.png", None);
+
+        // Check if the result is an error
+        assert!(res2.is_err(), "Expected an error but got Ok");
+    
+        match res2 {
+            Err(NbisError::FileReadError(_)) => {
+                // This is the expected variant — success!
+            }
+            Err(other) => panic!("Expected FileReadError but got: {:?}", other),
+            Ok(_) => panic!("Expected error but got Ok"),
+        }
+
+        // // Test with an image (neither face nor fingerprint)
+        // let n_1 = fs::read("test_data/negative/no_face.jpeg").unwrap();
+
+        // let res1 = extract_minutiae(&n_1, None).unwrap();      
+        // let res2 = extract_minutiae(&n_1, None).unwrap();
+        // let score = res1.compare(&res2);
+        // println!("{:?}", score);
+
+        // Test with a face image
+        let n_2 = fs::read("test_data/negative/varun_square.png").unwrap();
+
+        let res1_n_2 = extract_minutiae(&n_2, None).unwrap();
+        let res2_n_2 = extract_minutiae(&n_2, None).unwrap();
+        let score_n_2 = res1_n_2.compare(&res2_n_2);
+        println!("{:?}", score_n_2);
+    }
 }
