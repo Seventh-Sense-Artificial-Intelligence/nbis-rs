@@ -197,7 +197,6 @@ extern "C" {
     pub(crate) fn free(ptr: *mut c_void); // libc::free
 }
 
-
 extern "C" {
     /// Computes NFIQ value and confidence from an 8-bit grayscale fingerprint image.
     /// - `idata`: pointer to grayscale image (8-bit)

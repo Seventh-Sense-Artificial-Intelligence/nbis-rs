@@ -7,7 +7,6 @@ fn main() {
         .file("ext/nbis/nfiq/src/lib/nfiq/znorm.c")
         .file("ext/nbis/commonbis/src/lib/util/memalloc.c")
         .file("ext/nbis/commonbis/src/lib/util/ssxstats.c")
-
         .file("ext/nbis/commonbis/src/lib/ioutil/dataio.c")
         .file("ext/nbis/commonbis/src/lib/ioutil/fileexst.c")
         .file("ext/nbis/commonbis/src/lib/ioutil/filehead.c")
@@ -23,8 +22,6 @@ fn main() {
         .file("ext/nbis/pcasys/src/lib/mlp/runmlp.c")
         .file("ext/nbis/pcasys/src/lib/mlp/acs.c")
         .file("ext/nbis/pcasys/src/lib/mlp/mlpcla.c")
-        
-
         .include("ext/nbis/pcasys/include")
         .include("ext/nbis/nfiq/include")
         .include("ext/nbis/mindtct/include")
@@ -33,7 +30,6 @@ fn main() {
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         .compile("nfiq");
-
 
     cc::Build::new()
         .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c")

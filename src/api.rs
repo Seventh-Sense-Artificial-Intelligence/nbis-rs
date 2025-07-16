@@ -11,9 +11,7 @@ use imageproc::rect::Rect;
 use crate::consts::MM_PER_INCH;
 use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
-use crate::ffi::{
-    comp_nfiq, free, free_minutiae, get_minutiae, LFSPARMS, MINUTIAE
-};
+use crate::ffi::{comp_nfiq, free, free_minutiae, get_minutiae, LFSPARMS, MINUTIAE};
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
 
@@ -25,7 +23,7 @@ pub struct NfiqResult {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, uniffi::Enum)]
 pub enum NfiqQuality {
-    Excellent = 1, 
+    Excellent = 1,
     VeryGood = 2,
     Good = 3,
     Fair = 4,
@@ -45,14 +43,13 @@ impl NfiqQuality {
     }
 }
 
-
 /// Computes the **NFIQ score** of an 8‑bit grayscale fingerprint image.
 ///
 /// * `image` — the bytes of any image (PNG, JPEG, etc.) that can be converted
 /// * `ppi`  — (Optional) scanner resolution in dpi. Default is 500 dpi.
 ///
 /// Returns an [`NfiqResult`] containing the NFIQ score and confidence.
-/// 
+///
 /// Image quality of 1 is best, 5 is worst.
 ///
 /// If the image cannot be processed, returns an [`NbisError`].
@@ -87,7 +84,7 @@ pub fn compute_nfiq(image: &[u8], ppi: Option<f64>) -> Result<NfiqResult, NbisEr
             gray.as_ptr() as *mut c_uchar,
             iw as c_int,
             ih as c_int,
-            8, // 8-bit image
+            8,                                         // 8-bit image
             if ppi > 0.0 { ppi as c_int } else { -1 }, // fallback to default
             &mut optflag,
         )
@@ -543,18 +540,27 @@ mod tests {
             "Confidence should be between 0.0 and 1.0"
         );
         // Quality should be very good for this image
-        assert!(res.nfiq == NfiqQuality::Poor, "NFIQ for p1_1 should be Poor");
+        assert!(
+            res.nfiq == NfiqQuality::Poor,
+            "NFIQ for p1_1 should be Poor"
+        );
 
         // Test a non-fingerprint image
         let random_image = fs::read("test_data/negative/landscape.jpg").unwrap();
         let res2 = compute_nfiq(&random_image, None).unwrap();
         // The quality should be poorest for non-fingerprint images
-        assert!(res2.nfiq == NfiqQuality::Poor, "NFIQ for non-fingerprint image should be Poor");
+        assert!(
+            res2.nfiq == NfiqQuality::Poor,
+            "NFIQ for non-fingerprint image should be Poor"
+        );
 
         // Test a non-fingerprint image
         let random_image = fs::read("test_data/negative/face.jpeg").unwrap();
         let res2 = compute_nfiq(&random_image, None).unwrap();
         // The quality should be poorest for non-fingerprint images
-        assert!(res2.nfiq == NfiqQuality::Poor, "NFIQ for non-fingerprint image should be Poor");
+        assert!(
+            res2.nfiq == NfiqQuality::Poor,
+            "NFIQ for non-fingerprint image should be Poor"
+        );
     }
 }
