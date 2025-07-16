@@ -1,17 +1,45 @@
 // build.rs
 fn main() {
     cc::Build::new()
+        .file("ext/nbis/nfiq/src/lib/nfiq/nfiq.c")
+        .file("ext/nbis/nfiq/src/lib/nfiq/nfiqgbls.c")
+        .file("ext/nbis/nfiq/src/lib/nfiq/nfiqread.c")
+        .file("ext/nbis/nfiq/src/lib/nfiq/znorm.c")
+        .file("ext/nbis/commonbis/src/lib/util/memalloc.c")
+        .file("ext/nbis/commonbis/src/lib/util/ssxstats.c")
+
+        .file("ext/nbis/commonbis/src/lib/ioutil/dataio.c")
+        .file("ext/nbis/commonbis/src/lib/ioutil/fileexst.c")
+        .file("ext/nbis/commonbis/src/lib/ioutil/filehead.c")
+        .file("ext/nbis/commonbis/src/lib/ioutil/fileroot.c")
+        .file("ext/nbis/commonbis/src/lib/ioutil/filesize.c")
+        .file("ext/nbis/commonbis/src/lib/ioutil/filetail.c")
+        .file("ext/nbis/commonbis/src/lib/ioutil/findfile.c")
+        .file("ext/nbis/commonbis/src/lib/ioutil/newext.c")
+        .file("ext/nbis/commonbis/src/lib/ioutil/readutil.c")
+
+        .include("ext/nbis/nfiq/include")
+        .include("ext/nbis/mindtct/include")
+        .include("ext/nbis/commonbis/include")
+        .include("ext/nbis/imgtools/include")
+        .define("NOVERBOSE", None) // you probably don’t want stdout spam
+        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
+        .compile("nfiq");
+
+
+    cc::Build::new()
         .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_alloc.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_drvrs.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_gbls.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_io.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_sort.c")
+        .include("ext/nbis/commonbis/include")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth_glue.c")
         .include("ext/nbis/bozorth/include") // to find bozorth.h
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .compile("bozorth3");
+        .compile("nfiq");
 
     cc::Build::new()
         .file("ext/nbis/mindtct/src/lib/mindtct/log.c")

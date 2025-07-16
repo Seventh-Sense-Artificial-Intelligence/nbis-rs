@@ -43,36 +43,55 @@ of the software.
 
 
 /***********************************************************************
-      FILE:    USEBSD.H
+      LIBRARY: IOUTIL - INPUT/OUTPUT Utilities
+
+      FILE:    FINDFILE.C
       AUTHOR:  Michael Garris
-      DATE:    06/09/2005
+      DATE:    11/27/1989
+      UPDATED: 03/15/2005 by MDG
 
-      Controls definitions to facilitate the portable use of
-      BSD-based library routines on both Linux and Cygwin platforms.
-      This file must be included when code is calling for example:
+      Contains routines responsible for locating a file within a
+      specified directory path.
 
-         strdup()
-         rindex()
-         setlinebuf()
-
-      and the strict ANSI flag "-ansi" is used.  The including of
-      this file is intended to have no effect when the "-ansi"
-      compiler flag is not in use.
+      ROUTINES:
+#cat: find_file - takes a directory path and a filename and determines if
+#cat:             the file exists.
 
 ***********************************************************************/
-#ifndef _USEBSD_H
-#define _USEBSD_H
 
-#if defined(__linux__) && !defined(_BSD_SOURCE)
-#define _BSD_SOURCE
-#elif defined(__CYGWIN__) && defined(__STRICT_ANSI__)
-#undef __STRICT_ANSI__
-#endif
-
-/* The setting of _BSD_SOURCE under Linux sets up subsequent */
-/* definitions in <stdio.h>.  Therefore this file should be  */
-/* included first, so to help ensure this, <stdio.h> is      */
-/* included here at the end of this file */
 #include <stdio.h>
+#include <string.h>
+#include <sys/param.h>
+#include <dirent.h>
 
-#endif /* !_USEBSD_H */
+#define TRUE 1
+#define FALSE 0
+
+/**********************************************************************/
+int find_file(char *path, char *file)
+{
+    int flag,len;
+    DIR *dirp;
+    struct dirent *dp;
+
+    flag = 0;
+    if(strcmp(path,"") != 0){
+        len = strlen(file);
+        dirp = opendir(path);
+        for(dp = readdir(dirp); dp != NULL; dp = readdir(dirp)){
+#ifdef __STDC__
+           if((strlen(dp->d_name) == len) && !strcmp(dp->d_name,file)){
+#else
+           if(dp->d_namlen == len && !strcmp(dp->d_name,file)){
+#endif
+              flag = 1;
+           }
+        }
+        closedir(dirp);
+    }
+    
+    if (flag == 1) 
+        return(TRUE);
+    else
+        return(FALSE);
+}
