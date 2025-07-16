@@ -12,14 +12,71 @@ use crate::consts::MM_PER_INCH;
 use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
 use crate::ffi::{
-    free,          // libc::free from C side
-    free_minutiae, // C destructor for MINUTIAE*
-    get_minutiae,  // C → minutia extractor
-    LFSPARMS,
-    MINUTIAE,
+    comp_nfiq, free, free_minutiae, get_minutiae, LFSPARMS, MINUTIAE
 };
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct NfiqResult {
+    pub nfiq: i32,
+    pub confidence: f32,
+}
+
+/// Computes the **NFIQ score** of an 8‑bit grayscale fingerprint image.
+///
+/// * `image` — the bytes of any image (PNG, JPEG, etc.) that can be converted
+/// * `ppi`  — (Optional) scanner resolution in dpi. Default is 500 dpi.
+///
+/// Returns a tuple `(nfiq, confidence)`
+///
+/// If the image cannot be processed, returns an [`NbisError`].
+///
+/// This function uses the NBIS `comp_nfiq()` function with default model params.
+#[uniffi::export]
+pub fn compute_nfiq(image: &[u8], ppi: Option<f64>) -> Result<NfiqResult, NbisError> {
+    let ppi = ppi.unwrap_or(500.0); // default to 500 dpi
+
+    // 0) Load the image ------------------------------------------------------
+    let image = match image::load_from_memory(image) {
+        Ok(img) => img,
+        Err(_) => return Err(NbisError::ImageLoadError),
+    };
+
+    // 1) Ensure 8‑bit grayscale ----------------------------------------------
+    let gray = match image {
+        DynamicImage::ImageLuma8(buf) => buf.clone(),
+        _ => image.to_luma8(),
+    };
+    let (iw, ih) = gray.dimensions();
+
+    let mut nfiq: c_int = -1;
+    let mut conf: f32 = 0.0;
+    let mut optflag: c_int = 0;
+
+    // 2) Call C API ----------------------------------------------------------
+    let rc = unsafe {
+        comp_nfiq(
+            &mut nfiq,
+            &mut conf,
+            gray.as_ptr() as *mut c_uchar,
+            iw as c_int,
+            ih as c_int,
+            8, // 8-bit image
+            if ppi > 0.0 { ppi as c_int } else { -1 }, // fallback to default
+            &mut optflag,
+        )
+    };
+
+    if rc != 0 {
+        return Err(NbisError::UnexpectedError(rc as i64));
+    }
+
+    Ok(NfiqResult {
+        nfiq,
+        confidence: conf,
+    })
+}
 
 /// Extracts minutiae from an 8‑bit grayscale fingerprint image using the
 /// **NIST LFS v2** algorithm.
@@ -450,5 +507,17 @@ mod tests {
             );
             assert_eq!(m1.kind, m2.kind, "Kind should match");
         }
+    }
+
+    #[test]
+    fn test_nfiq() {
+        let bryanc_1 = fs::read("test_data/p1/p1_1.png").unwrap();
+        let res = compute_nfiq(&bryanc_1, None).unwrap();
+        assert!(res.nfiq >= 0, "NFIQ should be non-negative");
+        println!("NFIQ: {}, Confidence: {}", res.nfiq, res.confidence);
+        assert!(
+            (0.0..=1.0).contains(&res.confidence),
+            "Confidence should be between 0.0 and 1.0"
+        );
     }
 }

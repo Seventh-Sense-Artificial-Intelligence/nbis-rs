@@ -12,7 +12,7 @@ mod imutils;
 mod minutia;
 mod minutiae;
 
-pub use api::{extract_minutiae, extract_minutiae_from_image_file, load_iso_19794_2_2005};
+pub use api::{extract_minutiae, extract_minutiae_from_image_file, load_iso_19794_2_2005, compute_nfiq};
 pub use errors::NbisError;
 pub use minutia::{Minutia, MinutiaKind, Position};
 pub use minutiae::Minutiae;

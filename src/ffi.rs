@@ -196,3 +196,26 @@ extern "C" {
     pub(crate) fn free_minutiae(ptr: *mut MINUTIAE);
     pub(crate) fn free(ptr: *mut c_void); // libc::free
 }
+
+
+extern "C" {
+    /// Computes NFIQ value and confidence from an 8-bit grayscale fingerprint image.
+    /// - `idata`: pointer to grayscale image (8-bit)
+    /// - `iw`, `ih`, `id`: width, height, depth (depth = 8)
+    /// - `ippi`: resolution in pixels per inch (-1 for default 500)
+    /// - `onfiq`: output pointer to NFIQ integer
+    /// - `oconf`: output pointer to confidence (max MLP activation)
+    /// - `optflag`: optional flags (can be null or &mut 0)
+    ///
+    /// Returns 0 on success, negative on error, or special codes for empty/low-quality images.
+    pub(crate) fn comp_nfiq(
+        onfiq: *mut c_int,
+        oconf: *mut f32,
+        idata: *mut c_uchar,
+        iw: c_int,
+        ih: c_int,
+        id: c_int,
+        ippi: c_int,
+        optflag: *mut c_int,
+    ) -> c_int;
+}

@@ -17,7 +17,15 @@ fn main() {
         .file("ext/nbis/commonbis/src/lib/ioutil/findfile.c")
         .file("ext/nbis/commonbis/src/lib/ioutil/newext.c")
         .file("ext/nbis/commonbis/src/lib/ioutil/readutil.c")
+        .file("ext/nbis/commonbis/src/lib/cblas/sgemv.c")
+        .file("ext/nbis/commonbis/src/lib/cblas/xerbla.c")
+        .file("ext/nbis/commonbis/src/lib/cblas/lsame.c")
+        .file("ext/nbis/pcasys/src/lib/mlp/runmlp.c")
+        .file("ext/nbis/pcasys/src/lib/mlp/acs.c")
+        .file("ext/nbis/pcasys/src/lib/mlp/mlpcla.c")
+        
 
+        .include("ext/nbis/pcasys/include")
         .include("ext/nbis/nfiq/include")
         .include("ext/nbis/mindtct/include")
         .include("ext/nbis/commonbis/include")
@@ -39,7 +47,7 @@ fn main() {
         .include("ext/nbis/bozorth/include") // to find bozorth.h
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .compile("nfiq");
+        .compile("bozorth");
 
     cc::Build::new()
         .file("ext/nbis/mindtct/src/lib/mindtct/log.c")
