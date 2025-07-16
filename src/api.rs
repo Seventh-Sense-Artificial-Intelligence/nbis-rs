@@ -565,13 +565,13 @@ mod tests {
     }
 
     #[test]
-    fn test_negative() {      
+    fn test_negative() {
         //Try to extract minutae from a file that is not an image
         let res1 = extract_minutiae_from_image_file("build.rs", None);
 
         // Check if the result is an error
         assert!(res1.is_err(), "Expected an error but got Ok");
-    
+
         match res1 {
             Err(NbisError::ImageLoadError) => {
                 // This is the expected variant — success!
@@ -585,7 +585,7 @@ mod tests {
 
         // Check if the result is an error
         assert!(res2.is_err(), "Expected an error but got Ok");
-    
+
         match res2 {
             Err(NbisError::FileReadError(_)) => {
                 // This is the expected variant — success!
@@ -597,7 +597,7 @@ mod tests {
         // // Test with an image (neither face nor fingerprint)
         // let n_1 = fs::read("test_data/negative/no_face.jpeg").unwrap();
 
-        // let res1 = extract_minutiae(&n_1, None).unwrap();      
+        // let res1 = extract_minutiae(&n_1, None).unwrap();
         // let res2 = extract_minutiae(&n_1, None).unwrap();
         // let score = res1.compare(&res2);
         // println!("{:?}", score);
