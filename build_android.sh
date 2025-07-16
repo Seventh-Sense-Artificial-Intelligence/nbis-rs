@@ -18,8 +18,8 @@ done
 
 # Clear jniLibs output
 echo "🧹 Cleaning existing jniLibs..."
-rm -rf "$JNILIBS_DIR"
-mkdir -p "$JNILIBS_DIR"
+rm -f "$JNILIBS_DIR/arm64-v8a/"*.so
+rm -f "$JNILIBS_DIR/armeabi-v7a/"*.so
 
 # Copy .so files into correct ABI folders
 for TARGET in "${TARGETS[@]}"; do
