@@ -38,8 +38,8 @@ impl Minutiae {
         //println!("Matching {} vs {}", p.xs.len(), g.xs.len());
         let score = bz_match_score(&p, &g);
         // #define QQ_SIZE 4000
-        //#define QQ_OVERFLOW_SCORE QQ_SIZE
-        // If the score is greater than QQ_SIZE, it indicates an overflow condition.
+        // #define QQ_OVERFLOW_SCORE QQ_SIZE
+        // If the score is QQ_SIZE, it indicates an overflow condition.
         if score == 4000 {
             0 // Just return 0 for overflow
         } else {
