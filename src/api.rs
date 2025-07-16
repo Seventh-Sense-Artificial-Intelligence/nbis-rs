@@ -28,7 +28,9 @@ pub struct NfiqResult {
 /// * `image` — the bytes of any image (PNG, JPEG, etc.) that can be converted
 /// * `ppi`  — (Optional) scanner resolution in dpi. Default is 500 dpi.
 ///
-/// Returns a tuple `(nfiq, confidence)`
+/// Returns an [`NfiqResult`] containing the NFIQ score and confidence.
+/// 
+/// Image quality of 1 is best, 5 is worst.
 ///
 /// If the image cannot be processed, returns an [`NbisError`].
 ///
@@ -511,13 +513,26 @@ mod tests {
 
     #[test]
     fn test_nfiq() {
-        let bryanc_1 = fs::read("test_data/p1/p1_1.png").unwrap();
-        let res = compute_nfiq(&bryanc_1, None).unwrap();
+        let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
+        let res = compute_nfiq(&p1_1, None).unwrap();
         assert!(res.nfiq >= 0, "NFIQ should be non-negative");
-        println!("NFIQ: {}, Confidence: {}", res.nfiq, res.confidence);
         assert!(
             (0.0..=1.0).contains(&res.confidence),
             "Confidence should be between 0.0 and 1.0"
         );
+        // Quality should be very good for this image
+        assert!(res.nfiq == 1, "NFIQ for p1_1 should be 1");
+
+        // Test a non-fingerprint image
+        let random_image = fs::read("test_data/negative/landscape.jpg").unwrap();
+        let res2 = compute_nfiq(&random_image, None).unwrap();
+        // The quality should be poorest for non-fingerprint images
+        assert!(res2.nfiq == 5, "NFIQ for non-fingerprint image should be 5");
+
+        // Test a non-fingerprint image
+        let random_image = fs::read("test_data/negative/face.jpeg").unwrap();
+        let res2 = compute_nfiq(&random_image, None).unwrap();
+        // The quality should be poorest for non-fingerprint images
+        assert!(res2.nfiq == 5, "NFIQ for non-fingerprint image should be 5");
     }
 }
