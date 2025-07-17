@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
+use crate::api::NfiqResult;
 use crate::minutia::Minutia;
 use crate::{
     bozorth::bz_match_score,
@@ -12,14 +13,16 @@ pub struct Minutiae {
     pub(crate) inner: Vec<Minutia>,
     pub(crate) img_w: u32, // original image width for XYT conversion
     pub(crate) img_h: u32, // original image height for XYT conversion
+    pub(crate) nfiq: NfiqResult,
 }
 
 impl Minutiae {
-    pub(crate) fn new(minutiae: Vec<Minutia>, img_w: u32, img_h: u32) -> Self {
+    pub(crate) fn new(minutiae: Vec<Minutia>, img_w: u32, img_h: u32, nfiq: NfiqResult) -> Self {
         Minutiae {
             inner: minutiae.to_vec(),
             img_w,
             img_h,
+            nfiq,
         }
     }
 }
@@ -50,6 +53,10 @@ impl Minutiae {
         } else {
             score // Return the actual score
         }
+    }
+
+    pub fn quality(&self) -> NfiqResult {
+        self.nfiq.clone()
     }
 
     /// Returns a vector of `Minutia` objects representing the minutiae in this set.

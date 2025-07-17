@@ -12,7 +12,9 @@ use crate::consts::MM_PER_INCH;
 use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
 use crate::ffi::{
-    comp_nfiq, free, free_minutiae, get_minutiae, EMPTY_IMG, LFSPARMS, MINUTIAE, TOO_FEW_MINUTIAE,
+    comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts,
+    dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2,
+    znorm_fniq_featvctr, LFSPARMS, MINUTIAE, MIN_MINUTIAE, NFIQ_NUM_CLASSES, NFIQ_VCTRLEN,
 };
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
@@ -34,6 +36,9 @@ pub struct NfiqResult {
 /// Represents the quality of a fingerprint image as determined by NFIQ.
 #[derive(Debug, Clone, PartialEq, PartialOrd, uniffi::Enum)]
 pub enum NfiqQuality {
+    /// Unknown quality fingerprint image. If the minutiae are loaded from a template,
+    /// this means the quality is unknown.
+    Unknown = 0,
     /// Excellent quality fingerprint image.
     /// This means the image is very clear and suitable for fingerprint recognition.
     Excellent = 1,
@@ -62,77 +67,6 @@ impl NfiqQuality {
             _ => None,
         }
     }
-}
-
-/// Computes the **NFIQ score** of an 8‑bit grayscale fingerprint image.
-///
-/// * `image` — the bytes of any image (PNG, JPEG, etc.) that can be converted
-/// * `ppi`  — (Optional) scanner resolution in dpi. Default is 500 dpi.
-///
-/// Returns an [`NfiqResult`] containing the NFIQ score and confidence.
-///
-/// Image quality of 1 is best, 5 is worst.
-///
-/// If the image cannot be processed, returns an [`NbisError`].
-///
-/// This function uses the NBIS `comp_nfiq()` function with default model params.
-#[uniffi::export]
-pub fn compute_nfiq(image: &[u8], ppi: Option<f64>) -> Result<NfiqResult, NbisError> {
-    let ppi = ppi.unwrap_or(500.0); // default to 500 dpi
-
-    // 0) Load the image ------------------------------------------------------
-    let image = match image::load_from_memory(image) {
-        Ok(img) => img,
-        Err(_) => return Err(NbisError::ImageLoadError),
-    };
-
-    // 1) Ensure 8‑bit grayscale ----------------------------------------------
-    let gray = match image {
-        DynamicImage::ImageLuma8(buf) => buf.clone(),
-        _ => image.to_luma8(),
-    };
-    let (iw, ih) = gray.dimensions();
-
-    let mut nfiq: c_int = -1;
-    let mut conf: f32 = 0.0;
-    let mut optflag: c_int = 0;
-
-    // 2) Call C API ----------------------------------------------------------
-    let rc = unsafe {
-        comp_nfiq(
-            &mut nfiq,
-            &mut conf,
-            gray.as_ptr() as *mut c_uchar,
-            iw as c_int,
-            ih as c_int,
-            8,                                         // 8-bit image
-            if ppi > 0.0 { ppi as c_int } else { -1 }, // fallback to default
-            &mut optflag,
-        )
-    };
-
-    if rc == TOO_FEW_MINUTIAE {
-        return Ok(NfiqResult {
-            nfiq: NfiqQuality::Poor,
-            confidence: 1.0,
-        }); // Poor quality if too few minutiae
-    }
-
-    if rc == EMPTY_IMG {
-        return Ok(NfiqResult {
-            nfiq: NfiqQuality::Poor,
-            confidence: 1.0,
-        }); // Poor quality for empty images
-    }
-
-    if rc != 0 {
-        return Err(NbisError::UnexpectedError(rc as i64));
-    }
-
-    Ok(NfiqResult {
-        nfiq: NfiqQuality::from_i32(nfiq).unwrap_or(NfiqQuality::Poor),
-        confidence: conf,
-    })
 }
 
 /// Extracts minutiae from an 8‑bit grayscale fingerprint image using the
@@ -218,14 +152,68 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
     // let bin_img = ImageBuffer::<Luma<u8>, Vec<u8>>::from_raw(obw as u32, obh as u32, bin_slice.to_vec())
     //     .expect("size mismatch creating ImageBuffer");
 
-    // 4) Free C allocations we no longer need -------------------------------
-    unsafe {
-        free(oquality_map as *mut c_void);
-        free(odirection_map as *mut c_void);
-        free(olow_contrast_map as *mut c_void);
-        free(olow_flow_map as *mut c_void);
-        free(ohigh_curve_map as *mut c_void);
-        free(obdata as *mut c_void);
+    // Default to poor quality if we can't compute NFIQ
+    let mut quality = NfiqResult {
+        nfiq: NfiqQuality::Poor,
+        confidence: 1.0,
+    };
+    // 3) compute the quality of the image -----------------------------
+    // Only do quality assessment if there are enough minutiae
+    if unsafe { (*ominutiae).num } > MIN_MINUTIAE as i32 {
+        let mut featvctr = [0.0f32; NFIQ_VCTRLEN];
+        let mut optflag = 0;
+
+        let ret = unsafe {
+            comp_nfiq_featvctr(
+                featvctr.as_mut_ptr(),
+                NFIQ_VCTRLEN as c_int,
+                ominutiae,
+                oquality_map,
+                map_w,
+                map_h,
+                &mut optflag,
+            )
+        };
+
+        if ret == 0 {
+            // Z-normalize the feature vector
+            unsafe {
+                znorm_fniq_featvctr(
+                    featvctr.as_mut_ptr(),
+                    dflt_znorm_means.as_ptr(),
+                    dflt_znorm_stds.as_ptr(),
+                    NFIQ_VCTRLEN as c_int,
+                )
+            };
+
+            // Call the MLP for NFIQ classification
+            // Define the output arrays
+            let mut outacs = [0.0f32; NFIQ_NUM_CLASSES];
+            let mut class_idx: c_int = 0;
+            let mut confidence: f32 = 0.0;
+            let ret = unsafe {
+                runmlp2(
+                    dflt_nInps,
+                    dflt_nHids,
+                    dflt_nOuts,
+                    dflt_acfunc_hids,
+                    dflt_acfunc_outs,
+                    dflt_wts.as_ptr() as *mut f32,
+                    featvctr.as_mut_ptr(),
+                    outacs.as_mut_ptr(),
+                    &mut class_idx,
+                    &mut confidence,
+                )
+            };
+
+            if ret == 0 {
+                // Map the class index to NFIQ quality
+                quality = NfiqResult {
+                    nfiq: NfiqQuality::from_i32(class_idx + 1).unwrap_or(NfiqQuality::Poor),
+                    confidence,
+                };
+            }
+        }
     }
 
     let minutiae = NonNull::new(ominutiae).expect("C returned null pointer");
@@ -256,10 +244,17 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
                 }
             })
             .collect();
-        Minutiae::new(minutiae_vec, iw, ih)
+        Minutiae::new(minutiae_vec, iw, ih, quality)
     };
 
+    // 4) Free C allocations we no longer need -------------------------------
     unsafe {
+        free(oquality_map as *mut c_void);
+        free(odirection_map as *mut c_void);
+        free(olow_contrast_map as *mut c_void);
+        free(olow_flow_map as *mut c_void);
+        free(ohigh_curve_map as *mut c_void);
+        free(obdata as *mut c_void);
         free_minutiae(ominutiae);
     };
 
@@ -317,7 +312,15 @@ pub fn load_iso_19794_2_2005(template_bytes: &[u8]) -> Result<Minutiae, NbisErro
         minutiae.push(decode_minutia(&m_bytes));
     }
 
-    Ok(Minutiae::new(minutiae, width as u32, height as u32))
+    Ok(Minutiae::new(
+        minutiae,
+        width as u32,
+        height as u32,
+        NfiqResult {
+            nfiq: NfiqQuality::Unknown,
+            confidence: 0.0,
+        },
+    ))
 }
 
 /// Extracts minutiae from an 8‑bit grayscale fingerprint image using the
@@ -569,32 +572,32 @@ mod tests {
     #[test]
     fn test_nfiq() {
         let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
-        let res = compute_nfiq(&p1_1, None).unwrap();
+        let res = extract_minutiae(&p1_1, None).unwrap();
         assert!(
-            (0.0..=1.0).contains(&res.confidence),
+            (0.0..=1.0).contains(&res.quality().confidence),
             "Confidence should be between 0.0 and 1.0"
         );
         // Quality should be very good for this image
         assert!(
-            res.nfiq == NfiqQuality::Excellent,
+            res.quality().nfiq == NfiqQuality::Excellent,
             "NFIQ for p1_1 should be Excellent"
         );
 
         // Test a non-fingerprint image
         let random_image = fs::read("test_data/negative/landscape.jpg").unwrap();
-        let res2 = compute_nfiq(&random_image, None).unwrap();
+        let res2 = extract_minutiae(&random_image, None).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
-            res2.nfiq == NfiqQuality::Poor,
+            res2.quality().nfiq == NfiqQuality::Poor,
             "NFIQ for non-fingerprint image should be Poor"
         );
 
         // Test a non-fingerprint image
         let random_image = fs::read("test_data/negative/face.jpeg").unwrap();
-        let res2 = compute_nfiq(&random_image, None).unwrap();
+        let res2 = extract_minutiae(&random_image, None).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
-            res2.nfiq == NfiqQuality::Poor,
+            res2.quality().nfiq == NfiqQuality::Poor,
             "NFIQ for non-fingerprint image should be Poor"
         );
     }
