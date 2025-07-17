@@ -38,8 +38,23 @@ pub(crate) fn ensure_bozorth_inited() {
 }
 
 pub const MAX_BOZORTH_MINUTIAE: usize = 200; // <-- match bozorth.h
-pub const TOO_FEW_MINUTIAE: c_int = 2; // <-- match nfiq.h
-pub const EMPTY_IMG: c_int = 1; // <-- match nfiq.h
+                                             //pub const TOO_FEW_MINUTIAE: c_int = 2; // <-- match nfiq.h
+                                             //pub const EMPTY_IMG: c_int = 1; // <-- match nfiq.h
+pub const MIN_MINUTIAE: usize = 5; // <-- match nfiq.h
+pub const NFIQ_VCTRLEN: usize = 11; // <-- match nfiq.h
+pub const NFIQ_NUM_CLASSES: usize = 5; // <-- match nfiq.h
+pub const NFIQ_ML_WEIGHTS_LEN: usize = 379;
+
+extern "C" {
+    pub static dflt_znorm_means: [f32; NFIQ_VCTRLEN]; // 11 = NFIQ_VCTRLEN
+    pub static dflt_znorm_stds: [f32; NFIQ_VCTRLEN]; // 11 = NFIQ_VCTRLEN
+    pub static dflt_nInps: ::std::os::raw::c_int; // 11 = NFIQ_VCTRLEN
+    pub static dflt_nHids: ::std::os::raw::c_int;
+    pub static dflt_nOuts: ::std::os::raw::c_int;
+    pub static dflt_acfunc_hids: ::std::os::raw::c_char;
+    pub static dflt_acfunc_outs: ::std::os::raw::c_char;
+    pub static dflt_wts: [f32; NFIQ_ML_WEIGHTS_LEN]; // 379 = NFIQ_ML_WEIGHTS_LEN
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -200,23 +215,73 @@ extern "C" {
 }
 
 extern "C" {
-    /// Computes NFIQ value and confidence from an 8-bit grayscale fingerprint image.
-    /// - `idata`: pointer to grayscale image (8-bit)
-    /// - `iw`, `ih`, `id`: width, height, depth (depth = 8)
-    /// - `ippi`: resolution in pixels per inch (-1 for default 500)
-    /// - `onfiq`: output pointer to NFIQ integer
-    /// - `oconf`: output pointer to confidence (max MLP activation)
-    /// - `optflag`: optional flags (can be null or &mut 0)
+    /// Run the NFIQ MLP model on a feature vector
     ///
-    /// Returns 0 on success, negative on error, or special codes for empty/low-quality images.
-    pub(crate) fn comp_nfiq(
-        onfiq: *mut c_int,
-        oconf: *mut f32,
-        idata: *mut c_uchar,
-        iw: c_int,
-        ih: c_int,
-        id: c_int,
-        ippi: c_int,
-        optflag: *mut c_int,
-    ) -> c_int;
+    /// # Arguments
+    /// - `ninps`: number of input nodes
+    /// - `nhids`: number of hidden nodes
+    /// - `nouts`: number of output nodes
+    /// - `acfunc_hids_code`: activation function code for hidden layer (e.g., 'L', 'S', 'N')
+    /// - `acfunc_outs_code`: activation function code for output layer
+    /// - `w`: pointer to MLP weights
+    /// - `featvec`: pointer to input feature vector
+    /// - `outacs`: pointer to output activation vector (length `nouts`)
+    /// - `hypclass`: pointer to integer for output class (0 to nouts - 1)
+    /// - `confidence`: pointer to float for confidence score (max activation)
+    ///
+    /// # Returns
+    /// - 0 on success
+    pub fn runmlp2(
+        ninps: ::std::os::raw::c_int,
+        nhids: ::std::os::raw::c_int,
+        nouts: ::std::os::raw::c_int,
+        acfunc_hids_code: ::std::os::raw::c_char,
+        acfunc_outs_code: ::std::os::raw::c_char,
+        w: *mut f32,
+        featvec: *mut f32,
+        outacs: *mut f32,
+        hypclass: *mut ::std::os::raw::c_int,
+        confidence: *mut f32,
+    ) -> ::std::os::raw::c_int;
+}
+
+extern "C" {
+    /// Z-normalize an NFIQ feature vector in-place
+    ///
+    /// # Arguments
+    /// - `featvctr`: pointer to the feature vector (modified in-place)
+    /// - `znorm_means`: pointer to the means for each coefficient
+    /// - `znorm_stds`: pointer to the stddevs for each coefficient
+    /// - `vctrlen`: length of the vectors
+    pub fn znorm_fniq_featvctr(
+        featvctr: *mut f32,
+        znorm_means: *const f32,
+        znorm_stds: *const f32,
+        vctrlen: ::std::os::raw::c_int,
+    );
+}
+
+extern "C" {
+    /// Computes NFIQ feature vector from Mindtct output
+    ///
+    /// # Arguments
+    /// - `featvctr`: pointer to output buffer (length = `vctrlen`)
+    /// - `vctrlen`: length of the `featvctr` array
+    /// - `minutiae`: pointer to C `MINUTIAE` struct
+    /// - `quality_map`: pointer to quality map (int*)
+    /// - `map_w`, `map_h`: dimensions of the quality map   
+    /// - `optflag`: pointer to optional flags
+    ///
+    /// # Returns
+    /// - 0 on success
+    /// - EMPTY_IMG or error code otherwise
+    pub fn comp_nfiq_featvctr(
+        featvctr: *mut f32,
+        vctrlen: ::std::os::raw::c_int,
+        minutiae: *const MINUTIAE,
+        quality_map: *mut ::std::os::raw::c_int,
+        map_w: ::std::os::raw::c_int,
+        map_h: ::std::os::raw::c_int,
+        optflag: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
 }
