@@ -12,14 +12,128 @@ use crate::consts::MM_PER_INCH;
 use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
 use crate::ffi::{
-    free,          // libc::free from C side
-    free_minutiae, // C destructor for MINUTIAE*
-    get_minutiae,  // C → minutia extractor
-    LFSPARMS,
-    MINUTIAE,
+    comp_nfiq, free, free_minutiae, get_minutiae, EMPTY_IMG, LFSPARMS, MINUTIAE, TOO_FEW_MINUTIAE,
 };
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
+
+/// Represents the result of the NFIQ computation.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct NfiqResult {
+    /// The NFIQ quality score.
+    /// 1 = Excellent, 2 = Very Good, 3 = Good,
+    /// 4 = Fair, 5 = Poor.
+    /// See [`NfiqQuality`] for more details.
+    pub nfiq: NfiqQuality,
+    /// The confidence level of the NFIQ score.
+    /// A value between 0.0 and 1.0, where 1.0 means very confident.
+    /// This is a floating point value.
+    pub confidence: f32,
+}
+
+/// Represents the quality of a fingerprint image as determined by NFIQ.
+#[derive(Debug, Clone, PartialEq, PartialOrd, uniffi::Enum)]
+pub enum NfiqQuality {
+    /// Excellent quality fingerprint image.
+    /// This means the image is very clear and suitable for fingerprint recognition.
+    Excellent = 1,
+    /// Very good quality fingerprint image.
+    /// This means the image is clear but may have some minor issues.
+    VeryGood = 2,
+    /// Good quality fingerprint image.
+    /// This means the image is usable but has noticeable issues.
+    Good = 3,
+    /// Fair quality fingerprint image.
+    /// This means the image is barely usable for fingerprint recognition.
+    Fair = 4,
+    /// Poor quality fingerprint image.
+    /// This means the image is not usable for fingerprint recognition.
+    Poor = 5,
+}
+
+impl NfiqQuality {
+    pub fn from_i32(value: i32) -> Option<Self> {
+        match value {
+            1 => Some(NfiqQuality::Excellent),
+            2 => Some(NfiqQuality::VeryGood),
+            3 => Some(NfiqQuality::Good),
+            4 => Some(NfiqQuality::Fair),
+            5 => Some(NfiqQuality::Poor),
+            _ => None,
+        }
+    }
+}
+
+/// Computes the **NFIQ score** of an 8‑bit grayscale fingerprint image.
+///
+/// * `image` — the bytes of any image (PNG, JPEG, etc.) that can be converted
+/// * `ppi`  — (Optional) scanner resolution in dpi. Default is 500 dpi.
+///
+/// Returns an [`NfiqResult`] containing the NFIQ score and confidence.
+///
+/// Image quality of 1 is best, 5 is worst.
+///
+/// If the image cannot be processed, returns an [`NbisError`].
+///
+/// This function uses the NBIS `comp_nfiq()` function with default model params.
+#[uniffi::export]
+pub fn compute_nfiq(image: &[u8], ppi: Option<f64>) -> Result<NfiqResult, NbisError> {
+    let ppi = ppi.unwrap_or(500.0); // default to 500 dpi
+
+    // 0) Load the image ------------------------------------------------------
+    let image = match image::load_from_memory(image) {
+        Ok(img) => img,
+        Err(_) => return Err(NbisError::ImageLoadError),
+    };
+
+    // 1) Ensure 8‑bit grayscale ----------------------------------------------
+    let gray = match image {
+        DynamicImage::ImageLuma8(buf) => buf.clone(),
+        _ => image.to_luma8(),
+    };
+    let (iw, ih) = gray.dimensions();
+
+    let mut nfiq: c_int = -1;
+    let mut conf: f32 = 0.0;
+    let mut optflag: c_int = 0;
+
+    // 2) Call C API ----------------------------------------------------------
+    let rc = unsafe {
+        comp_nfiq(
+            &mut nfiq,
+            &mut conf,
+            gray.as_ptr() as *mut c_uchar,
+            iw as c_int,
+            ih as c_int,
+            8,                                         // 8-bit image
+            if ppi > 0.0 { ppi as c_int } else { -1 }, // fallback to default
+            &mut optflag,
+        )
+    };
+
+    if rc == TOO_FEW_MINUTIAE {
+        return Ok(NfiqResult {
+            nfiq: NfiqQuality::Poor,
+            confidence: 1.0,
+        }); // Poor quality if too few minutiae
+    }
+
+    if rc == EMPTY_IMG {
+        return Ok(NfiqResult {
+            nfiq: NfiqQuality::Poor,
+            confidence: 1.0,
+        }); // Poor quality for empty images
+    }
+
+    if rc != 0 {
+        return Err(NbisError::UnexpectedError(rc as i64));
+    }
+
+    Ok(NfiqResult {
+        nfiq: NfiqQuality::from_i32(nfiq).unwrap_or(NfiqQuality::Poor),
+        confidence: conf,
+    })
+}
 
 /// Extracts minutiae from an 8‑bit grayscale fingerprint image using the
 /// **NIST LFS v2** algorithm.
@@ -450,5 +564,85 @@ mod tests {
             );
             assert_eq!(m1.kind, m2.kind, "Kind should match");
         }
+    }
+
+    #[test]
+    fn test_nfiq() {
+        let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
+        let res = compute_nfiq(&p1_1, None).unwrap();
+        assert!(
+            (0.0..=1.0).contains(&res.confidence),
+            "Confidence should be between 0.0 and 1.0"
+        );
+        // Quality should be very good for this image
+        assert!(
+            res.nfiq == NfiqQuality::Excellent,
+            "NFIQ for p1_1 should be Excellent"
+        );
+
+        // Test a non-fingerprint image
+        let random_image = fs::read("test_data/negative/landscape.jpg").unwrap();
+        let res2 = compute_nfiq(&random_image, None).unwrap();
+        // The quality should be poorest for non-fingerprint images
+        assert!(
+            res2.nfiq == NfiqQuality::Poor,
+            "NFIQ for non-fingerprint image should be Poor"
+        );
+
+        // Test a non-fingerprint image
+        let random_image = fs::read("test_data/negative/face.jpeg").unwrap();
+        let res2 = compute_nfiq(&random_image, None).unwrap();
+        // The quality should be poorest for non-fingerprint images
+        assert!(
+            res2.nfiq == NfiqQuality::Poor,
+            "NFIQ for non-fingerprint image should be Poor"
+        );
+    }
+
+    #[test]
+    fn test_negative() {
+        //Try to extract minutae from a file that is not an image
+        let res1 = extract_minutiae_from_image_file("build.rs", None);
+
+        // Check if the result is an error
+        assert!(res1.is_err(), "Expected an error but got Ok");
+
+        match res1 {
+            Err(NbisError::ImageLoadError) => {
+                // This is the expected variant — success!
+            }
+            Err(other) => panic!("Expected ImageLoadError but got: {:?}", other),
+            Ok(_) => panic!("Expected error but got Ok"),
+        }
+
+        //Try to extract minutae from a file that does not exist
+        let res2 = extract_minutiae_from_image_file("test_data/negative/x.png", None);
+
+        // Check if the result is an error
+        assert!(res2.is_err(), "Expected an error but got Ok");
+
+        match res2 {
+            Err(NbisError::FileReadError(_)) => {
+                // This is the expected variant — success!
+            }
+            Err(other) => panic!("Expected FileReadError but got: {:?}", other),
+            Ok(_) => panic!("Expected error but got Ok"),
+        }
+
+        // // Test with an image (neither face nor fingerprint)
+        // let n_1 = fs::read("test_data/negative/no_face.jpeg").unwrap();
+
+        // let res1 = extract_minutiae(&n_1, None).unwrap();
+        // let res2 = extract_minutiae(&n_1, None).unwrap();
+        // let score = res1.compare(&res2);
+        // println!("{:?}", score);
+
+        // Test with a face image
+        let n_2 = fs::read("test_data/negative/varun_square.png").unwrap();
+
+        let res1_n_2 = extract_minutiae(&n_2, None).unwrap();
+        let res2_n_2 = extract_minutiae(&n_2, None).unwrap();
+        let score_n_2 = res1_n_2.compare(&res2_n_2);
+        println!("{:?}", score_n_2);
     }
 }

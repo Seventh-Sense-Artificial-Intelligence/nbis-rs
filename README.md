@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/actions/workflows/ci.yaml/badge.svg)](https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/actions/workflows/ci.yaml)
 
-This is a Rust/Python binding to the NIST Biometric Image Software (NBIS) library, which is used for processing biometric images, particularly in the context of fingerprint recognition.
+This is a Rust/Python binding to the [NIST Biometric Image Software](https://www.nist.gov/services-resources/software/nist-biometric-image-software-nbis) (NBIS) library, which is used for processing biometric images, particularly in the context of fingerprint recognition.
 
 ## Features
 
-- Bindings to NBIS functions for minutia extraction, and matching
+- Bindings to NBIS functions for minutia extraction, matching, and image quality assessment
 - Exports minutiae templates in ISO/IEC 19794-2:2005 format
 - Matches minutiae templates against each other using the NBIS Bozorth3 algorithm
 

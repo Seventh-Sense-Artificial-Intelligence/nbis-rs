@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use once_cell::sync::Lazy;
+use std::sync::{Arc, Mutex};
 
 use crate::minutia::Minutia;
 use crate::{
@@ -23,6 +24,8 @@ impl Minutiae {
     }
 }
 
+static BOZORTH_MUTEX: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
 #[uniffi::export]
 impl Minutiae {
     /// Similarity via Bozorth‑3 (higher = more similar). A score > 50 is a likely match.
@@ -33,6 +36,8 @@ impl Minutiae {
     /// Returns an `i32` score representing the similarity between the two sets of minutiae.
     /// A higher score indicates more similarity.
     pub fn compare(&self, other: &Minutiae) -> i32 {
+        // Ensure we have a lock to prevent concurrent access issues as Bozorth is not thread-safe.
+        let _lock = BOZORTH_MUTEX.lock().unwrap();
         let p = to_nist_xyt_set(self);
         let g = to_nist_xyt_set(other);
         //println!("Matching {} vs {}", p.xs.len(), g.xs.len());
