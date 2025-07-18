@@ -42,7 +42,6 @@ fn main() {
             .define("ANDROID_NATIVE_API_LEVEL", "21")
             .define("ANDROID_ABI", abi)
             .define("ANDROID_STL", "c++_static")
-            .define("CMAKE_CXX_STANDARD", "14")
             .define(
                 "CMAKE_TOOLCHAIN_FILE",
                 format!("{}/build/cmake/android.toolchain.cmake", ndk),
@@ -136,6 +135,10 @@ fn main() {
         .define("BUILD_WEBP", "OFF")
         .define("BUILD_OPENJPEG", "OFF")
         .define("WITH_FFMPEG", "OFF")
+        .define("WITH_CUDA", "OFF")
+        .define("WITH_CUDNN", "OFF")
+        .define("BUILD_opencv_python2", "OFF")
+        .define("BUILD_opencv_python3", "OFF")
         .define("BUILD_opencv_videoio", "OFF")
         .define(
             "BUILD_LIST",
@@ -145,6 +148,7 @@ fn main() {
         .define("BUILD_TESTS", "OFF")
         .define("BUILD_ZLIB", "OFF")
         .define("BUILD_PERF_TESTS", "OFF")
+        .define("CMAKE_CXX_STANDARD", "14")
         .build();
 
     if is_android {
