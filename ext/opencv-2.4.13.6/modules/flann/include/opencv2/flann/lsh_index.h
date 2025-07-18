@@ -40,6 +40,7 @@
 #include <cstring>
 #include <map>
 #include <vector>
+#include <random> 
 
 #include "general.h"
 #include "nn_index.h"
@@ -136,7 +137,9 @@ public:
               indices.resize( feature_size_ * CHAR_BIT );
               for (size_t j = 0; j < feature_size_ * CHAR_BIT; ++j)
                   indices[j] = j;
-              std::random_shuffle(indices.begin(), indices.end());
+              std::random_device rd;
+              std::mt19937 g(rd());
+              std::shuffle(indices.begin(), indices.end(), g);
             }
 
             lsh::LshTable<ElementType>& table = tables_[i];

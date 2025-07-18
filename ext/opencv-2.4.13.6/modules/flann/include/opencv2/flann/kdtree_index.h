@@ -35,6 +35,7 @@
 #include <map>
 #include <cassert>
 #include <cstring>
+#include <random>     // for std::mt19937 and std::random_device
 
 #include "general.h"
 #include "nn_index.h"
@@ -132,7 +133,10 @@ public:
         /* Construct the randomized trees. */
         for (int i = 0; i < trees_; i++) {
             /* Randomize the order of vectors to allow for unbiased sampling. */
-            std::random_shuffle(vind_.begin(), vind_.end());
+            //std::random_shuffle(vind_.begin(), vind_.end());
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(vind_.begin(), vind_.end(), g);
             tree_roots_[i] = divideTree(&vind_[0], int(size_) );
         }
     }

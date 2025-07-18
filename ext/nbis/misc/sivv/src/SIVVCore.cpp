@@ -12,7 +12,7 @@ about its quality, reliability, or any other characteristic.
 This software has been determined to be outside the scope of the EAR
 (see Part 734.3 of the EAR for exact details) as it has been created solely
 by employees of the U.S. Government; it is freely distributed with no
-licensing requirements; and it is considered public domain.  Therefore,
+licensing requirements; and it is considered public domain.ï¿½ Therefore,
 it is permissible to distribute this software as a free download from the
 internet.
 
@@ -97,7 +97,7 @@ using namespace std;
 
 /* OpenCV includes */
 #include <opencv/cv.h>
-#include <opencv/highgui.h>
+// #include <opencv/highgui.h>
 
 
 /* SIVV Includes */
@@ -127,49 +127,49 @@ DESCRIPTION:	Print image characteristics on stdout and create an
 		name			- An image window containing the given image (img)
 
 *******************************************************************************/
-void dump_image(const char *const name, IplImage *const img, int autosize, int verbose) 
-{
-   double min_val, max_val, xmin, xmax;
-   CvPoint min_loc, max_loc;
-   int channel;
-   CvScalar mean, sd, sum;
-   IplImage *disp_img;
+// void dump_image(const char *const name, IplImage *const img, int autosize, int verbose) 
+// {
+//    double min_val, max_val, xmin, xmax;
+//    CvPoint min_loc, max_loc;
+//    int channel;
+//    CvScalar mean, sd, sum;
+//    IplImage *disp_img;
    
-   if (verbose != 0)
-	   printf("%s: %d channels, %d bits, %dx%d\n", name, img->nChannels, img->depth, img->width, img->height);
+//    if (verbose != 0)
+// 	   printf("%s: %d channels, %d bits, %dx%d\n", name, img->nChannels, img->depth, img->width, img->height);
 
-   cvAvgSdv(img, &mean, &sd, NULL);
-   sum = cvSum(img);
-   double avg_sum = sum.val[0] / img->height;
+//    cvAvgSdv(img, &mean, &sd, NULL);
+//    sum = cvSum(img);
+//    double avg_sum = sum.val[0] / img->height;
 
 
-   disp_img = cvCloneImage(img);
+//    disp_img = cvCloneImage(img);
    
-   	xmin = 1000000.0;
-	xmax = -xmin;
-	for (channel = 1; channel <= disp_img->nChannels; channel++) 
-	{
-		cvSetImageCOI(disp_img, channel);
-	    cvMinMaxLoc(disp_img, &min_val, &max_val, &min_loc, &max_loc, NULL);
-		if (verbose != 0)
-			printf("  channel %d: min %0.10f, max %0.10f, mean %f, sd %f, avg_sum %f\n", channel, min_val, max_val, mean.val[channel-1], sd.val[channel-1], avg_sum);
-		if (min_val < xmin)
-			xmin = min_val;
-		if (max_val > xmax)
-			xmax = max_val;
-	}
-	cvSetImageCOI(disp_img, 0);		/* restore setting to all channels */
+//    	xmin = 1000000.0;
+// 	xmax = -xmin;
+// 	for (channel = 1; channel <= disp_img->nChannels; channel++) 
+// 	{
+// 		cvSetImageCOI(disp_img, channel);
+// 	    cvMinMaxLoc(disp_img, &min_val, &max_val, &min_loc, &max_loc, NULL);
+// 		if (verbose != 0)
+// 			printf("  channel %d: min %0.10f, max %0.10f, mean %f, sd %f, avg_sum %f\n", channel, min_val, max_val, mean.val[channel-1], sd.val[channel-1], avg_sum);
+// 		if (min_val < xmin)
+// 			xmin = min_val;
+// 		if (max_val > xmax)
+// 			xmax = max_val;
+// 	}
+// 	cvSetImageCOI(disp_img, 0);		/* restore setting to all channels */
    
-	if (disp_img->depth != (int)IPL_DEPTH_8S && disp_img->depth != (int)IPL_DEPTH_8U)
-		cvScale(disp_img, disp_img, 1.0/(xmax-xmin), -xmin/(xmax-xmin));
+// 	if (disp_img->depth != (int)IPL_DEPTH_8S && disp_img->depth != (int)IPL_DEPTH_8U)
+// 		cvScale(disp_img, disp_img, 1.0/(xmax-xmin), -xmin/(xmax-xmin));
     
-	if (autosize != 0)
-		cvNamedWindow(name, CV_WINDOW_AUTOSIZE); 	/* Auto-size window to image size */
-	else
-		cvNamedWindow(name, 0); 			/* User-resizable windows */
+// 	if (autosize != 0)
+// 		cvNamedWindow(name, CV_WINDOW_AUTOSIZE); 	/* Auto-size window to image size */
+// 	else
+// 		cvNamedWindow(name, 0); 			/* User-resizable windows */
 
-	cvShowImage(name, disp_img);
-}
+// 	cvShowImage(name, disp_img);
+// }
 
 /*******************************************************************************
 FUNCTION NAME:	init_blackman_1d_filter()
@@ -1166,7 +1166,7 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 		apply_blackman_window(img_dfp, img_dfp);
 		if (textonly == 0)
 		{
-			dump_image("Blackman Window", img_dfp, 0, verbose);
+			//dump_image("Blackman Window", img_dfp, 0, verbose);
 		}
 	}
 	/* Apply 2D Tukey Window Function (if specified at command line or by default) */
@@ -1175,7 +1175,7 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 		apply_tukey_window(img_dfp, img_dfp);
 		if (textonly == 0)
 		{
-			dump_image("Tukey Window", img_dfp, 0, verbose);
+			("Tukey Window", img_dfp, 0, verbose);
 		}
 	}
 
@@ -1185,7 +1185,7 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 	log_power_spectrum(img_dfp, img_lps);
 	if (textonly == 0)
 	{
-		dump_image("Log Power Spectrum", img_lps, 0, verbose);
+		//dump_image("Log Power Spectrum", img_lps, 0, verbose);
 	}
 
 	img_polar = cvCreateImage(cvGetSize(img_lps), IPL_DEPTH_32F, img_lps->nChannels);
@@ -1197,7 +1197,7 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 	
 	if (textonly == 0)
 	{
-		dump_image("Polar Transform", polar_trans, 0, verbose);
+		//dump_image("Polar Transform", polar_trans, 0, verbose);
 	}
 
 	/* Reduce LogPolar to angles 0 - 180 */
@@ -1296,10 +1296,10 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 		IplImage *graph = cvCreateImage(cvSize(500, 500), IPL_DEPTH_32F, 3);
 		
 		graph_sums(graph, rowsums, &largestpvp, &global_minmax, cvScalar(255,0,0));
-		if (textonly == 0)
-			dump_image("1D Power Spectrum Graph", graph, 1, 0);
-		if (graphfile != "")
-			cvSaveImage(graphfile.c_str(), graph);
+		// if (textonly == 0)
+		// 	dump_image("1D Power Spectrum Graph", graph, 1, 0);
+		// if (graphfile != "")
+		// 	cvSaveImage(graphfile.c_str(), graph);
 	}
 
 	if (signal != 0)
@@ -1400,7 +1400,7 @@ vector<double> lps(IplImage *src, int window, int smoothscale, int verbose, int 
 		apply_blackman_window(img_dfp, img_dfp);
 		if (verbose != 0)
 		{
-			dump_image("Blackman Window", img_dfp, 0, verbose);
+			//dump_image("Blackman Window", img_dfp, 0, verbose);
 		}
 	}
 	
@@ -1409,7 +1409,7 @@ vector<double> lps(IplImage *src, int window, int smoothscale, int verbose, int 
 	log_power_spectrum(img_dfp, img_lps);
 	if (verbose != 0)
 	{
-		dump_image("Log Power Spectrum", img_lps, 0, verbose);
+		//dump_image("Log Power Spectrum", img_lps, 0, verbose);
 	}
 
 	img_polar = cvCreateImage(cvGetSize(img_lps), IPL_DEPTH_32F, img_lps->nChannels);
@@ -1421,7 +1421,7 @@ vector<double> lps(IplImage *src, int window, int smoothscale, int verbose, int 
 	
 	if (verbose != 0)
 	{
-		dump_image("Polar Transform", polar_trans, 0, verbose);
+		//dump_image("Polar Transform", polar_trans, 0, verbose);
 	}
 
 	/* Reduce LogPolar to angles 0 - 180 */
@@ -1457,7 +1457,7 @@ vector<double> lps(IplImage *src, int window, int smoothscale, int verbose, int 
 		IplImage *graph = cvCreateImage(cvSize(500, 500), IPL_DEPTH_32F, 3);
 		
 		graph_sums(graph, rowsums, nopeaks, &global_minmax, cvScalar(255,0,0));
-		dump_image("1D Power Spectrum Graph", graph, 1, 0);
+		//dump_image("1D Power Spectrum Graph", graph, 1, 0);
 	}
 
 	return signal;
@@ -1517,10 +1517,10 @@ CvHistogram generate_histogram(IplImage* src, bool graph, string outfilepath="")
 		cvCopy(src, image);
 	}
 
-	if (graph)
-	{
-		cvNamedWindow(label.c_str(), 1);
-	}
+	// if (graph)
+	// {
+	// 	cvNamedWindow(label.c_str(), 1);
+	// }
 
 	cvCalcHist(&image, hist, 0, mask);
 	cvGetMinMaxHistValue(hist, 0, &max_value, 0, 0);
@@ -1540,7 +1540,7 @@ CvHistogram generate_histogram(IplImage* src, bool graph, string outfilepath="")
 			total_val += bin_val;
 		}
 
-		cvShowImage(label.c_str(), hist_image );
+		//cvShowImage(label.c_str(), hist_image );
 	}
 
 	// Write to output file... (TO-DO)

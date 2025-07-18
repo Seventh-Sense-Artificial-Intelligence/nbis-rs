@@ -285,3 +285,11 @@ extern "C" {
         optflag: *mut ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
+
+extern "C" {
+    pub fn sivv_ffi_from_bytes(
+        data: *const u8,
+        width: std::os::raw::c_int,
+        height: std::os::raw::c_int,
+    ) -> *const std::os::raw::c_char;
+}

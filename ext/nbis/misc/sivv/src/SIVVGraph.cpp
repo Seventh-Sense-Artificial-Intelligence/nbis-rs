@@ -12,7 +12,7 @@ about its quality, reliability, or any other characteristic.
 This software has been determined to be outside the scope of the EAR
 (see Part 734.3 of the EAR for exact details) as it has been created solely
 by employees of the U.S. Government; it is freely distributed with no
-licensing requirements; and it is considered public domain.  Therefore,
+licensing requirements; and it is considered public domain.ï¿½ Therefore,
 it is permissible to distribute this software as a free download from the
 internet.
 
@@ -59,7 +59,7 @@ using namespace std;
 
 /* OpenCV includes */
 #include <opencv/cv.h>
-#include <opencv/highgui.h>
+// #include <opencv/highgui.h>
 
 /* SIVV includes */
 #include "SIVVCore.h"

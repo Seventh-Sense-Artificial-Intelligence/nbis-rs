@@ -116,7 +116,7 @@ DESCRIPTION:	Print image characteristics on stdout and create an
 		name			- An image window containing the given image (img)
 
 *******************************************************************************/
-void dump_image(const char *const name, IplImage *const img, int autosize, int verbose);
+//void dump_image(const char *const name, IplImage *const img, int autosize, int verbose);
 
 
 /*******************************************************************************
