@@ -96,25 +96,20 @@ impl NfiqQuality {
     }
 }
 
-#[uniffi::export]
-pub fn sivv(image: &[u8]) -> Result<SIVVResult, NbisError> {
-    // 0) Load the image ------------------------------------------------------
-    let image = match image::load_from_memory(image) {
-        Ok(img) => img,
-        Err(_e) => return Err(NbisError::ImageLoadError),
-    };
+fn is_fingerprint(result: &SIVVResult) -> bool {
+    // The following values are from evaluation of the SIVV algorithm
+    // on a mixed biometric dataset.
+    let max_peak_freq = 0.15; // cycles/pixel
+    let peak_height_threshold = 0.02;
+    result.peak_frequency < max_peak_freq && result.power_diff > peak_height_threshold
+}
 
-    // 1) Ensure 8‑bit grayscale ------------------------------------------------
-    let gray = match image {
-        DynamicImage::ImageLuma8(buf) => buf.clone(),
-        _ => image.to_luma8(),
-    };
-
+fn sivv(image: *mut c_uchar, width: i32, height: i32) -> Result<SIVVResult, NbisError> {
     unsafe {
         let ptr = sivv_ffi_from_bytes(
-            gray.as_ptr() as *mut c_uchar,
-            gray.width() as i32,
-            gray.height() as i32,
+            image,
+            width as std::os::raw::c_int,
+            height as std::os::raw::c_int,
         );
         let str_result = CStr::from_ptr(ptr).to_string_lossy().into_owned();
         // Split the result into parts
@@ -167,6 +162,21 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
         _ => image.to_luma8(),
     };
     let (iw, ih) = gray.dimensions();
+
+    // 2) Check SIVV result -----------------------------------
+    let sivv_result = sivv(gray.as_ptr() as *mut c_uchar, iw as i32, ih as i32)?;
+    if !is_fingerprint(&sivv_result) {
+        // Early return if the image is not a fingerprint
+        return Ok(Minutiae::new(
+            Vec::new(),
+            iw as u32,
+            ih as u32,
+            NfiqResult {
+                nfiq: NfiqQuality::Unknown,
+                confidence: 0.0,
+            },
+        ));
+    }
 
     // Buffers and sizes returned by the C API -------------------------------
     let mut ominutiae: *mut MINUTIAE = null_mut();
@@ -659,8 +669,8 @@ mod tests {
         let res2 = extract_minutiae(&random_image, None).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
-            res2.quality().nfiq == NfiqQuality::Poor,
-            "NFIQ for non-fingerprint image should be Poor"
+            res2.quality().nfiq == NfiqQuality::Unknown,
+            "NFIQ for non-fingerprint image should be Unknown"
         );
 
         // Test a non-fingerprint image
@@ -668,8 +678,8 @@ mod tests {
         let res2 = extract_minutiae(&random_image, None).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
-            res2.quality().nfiq == NfiqQuality::Poor,
-            "NFIQ for non-fingerprint image should be Poor"
+            res2.quality().nfiq == NfiqQuality::Unknown,
+            "NFIQ for non-fingerprint image should be Unknown"
         );
     }
 
@@ -718,16 +728,5 @@ mod tests {
         let res2_n_2 = extract_minutiae(&n_2, None).unwrap();
         let score_n_2 = res1_n_2.compare(&res2_n_2);
         println!("{:?}", score_n_2);
-    }
-
-    #[test]
-    fn test_sivv() {
-        let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
-        let sivv_result = sivv(&p1_1).unwrap();
-        println!("SIVV result: {:?}", sivv_result);
-
-        let n_fp = fs::read("test_data/negative/face.jpeg").unwrap();
-        let sivv_result_n = sivv(&n_fp);
-        println!("SIVV result for non-fingerprint: {:?}", sivv_result_n);
     }
 }
