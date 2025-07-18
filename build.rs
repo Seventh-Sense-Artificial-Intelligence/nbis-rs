@@ -1,5 +1,6 @@
 // build.rs
 fn main() {
+    println!("cargo:rerun-if-env-changed=CLIPPY");
     cc::Build::new()
         .file("ext/nbis/nfiq/src/lib/nfiq/nfiq.c")
         .file("ext/nbis/nfiq/src/lib/nfiq/nfiqgbls.c")
@@ -78,6 +79,51 @@ fn main() {
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         .compile("mindtct");
+
+    let dst = cmake::Config::new("ext/opencv-2.4.13.6")
+        .define("BUILD_SHARED_LIBS", "OFF")
+        .define("BUILD_PNG", "OFF")
+        .define("BUILD_JPEG", "OFF")
+        .define("BUILD_TIFF", "OFF")
+        .define("BUILD_WEBP", "OFF")
+        .define("BUILD_OPENJPEG", "OFF")
+        .define("WITH_FFMPEG", "OFF")
+        .define("BUILD_opencv_videoio", "OFF")
+        .define(
+            "BUILD_LIST",
+            "core,imgproc,video,features2d,flann,calib3d,objdetect,legacy,highgui",
+        ) // only build needed modules
+        .define("BUILD_EXAMPLES", "OFF")
+        .define("BUILD_TESTS", "OFF")
+        .define("BUILD_ZLIB", "OFF")
+        .define("BUILD_PERF_TESTS", "OFF")
+        .build();
+
+    println!("cargo:rustc-link-search=native={}/lib", dst.display());
+    println!("cargo:rustc-link-lib=static=opencv_core");
+    println!("cargo:rustc-link-lib=static=opencv_imgproc");
+
+    cc::Build::new()
+        .cpp(true)
+        .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
+        .file("ext/nbis/misc/sivv/src/SIVVGraph.cpp")
+        .file("ext/nbis/misc/sivv/src/SIVVUtility.cpp")
+        .include("ext/nbis/misc/sivv/include")
+        .include("ext/opencv-2.4.13.6/include")
+        .include("ext/opencv-2.4.13.6/include/opencv")
+        .include("ext/opencv-2.4.13.6/modules/core/include")
+        .include("ext/opencv-2.4.13.6/modules/imgproc/include")
+        .include("ext/opencv-2.4.13.6/modules/video/include")
+        .include("ext/opencv-2.4.13.6/modules/features2d/include")
+        .include("ext/opencv-2.4.13.6/modules/flann/include")
+        .include("ext/opencv-2.4.13.6/modules/calib3d/include")
+        .include("ext/opencv-2.4.13.6/modules/objdetect/include")
+        .include("ext/opencv-2.4.13.6/modules/legacy/include")
+        .include("ext/opencv-2.4.13.6/modules/highgui/include")
+        .define("NOVERBOSE", None) // you probably don’t want stdout spam
+        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
+        .flag_if_supported("-Wno-everything") // extra if using
+        .compile("sivv");
 
     // Automatically re-run build.rs if these files change
     println!("cargo:rerun-if-changed=ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c");
