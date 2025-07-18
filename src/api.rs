@@ -725,5 +725,9 @@ mod tests {
         let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
         let sivv_result = sivv(&p1_1).unwrap();
         println!("SIVV result: {:?}", sivv_result);
+
+        let n_fp = fs::read("test_data/negative/face.jpeg").unwrap();
+        let sivv_result_n = sivv(&n_fp);
+        println!("SIVV result for non-fingerprint: {:?}", sivv_result_n);
     }
 }

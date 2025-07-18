@@ -190,7 +190,7 @@ fn main() {
             let entry = entry.expect("Failed to read dir entry");
             let path = entry.path();
 
-            if path.extension().map_or(false, |ext| ext == "a") {
+            if path.extension().is_some_and(|ext| ext == "a") {
                 let filename = path.file_name().unwrap();
                 let dst_path = Path::new(&out_dir).join(filename);
                 fs::copy(&path, &dst_path)
