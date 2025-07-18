@@ -12,4 +12,6 @@ pub enum NbisError {
     UnexpectedError(i64),
     #[error("Template could not be parsed: {0}")]
     InvalidTemplate(String),
+    #[error("Generic error: {0}")]
+    GenericError(String),
 }

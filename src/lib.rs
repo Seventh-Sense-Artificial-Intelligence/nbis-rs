@@ -13,8 +13,7 @@ mod minutia;
 mod minutiae;
 
 pub use api::{
-    extract_minutiae, extract_minutiae_from_image_file, load_iso_19794_2_2005, NfiqQuality,
-    sivv
+    extract_minutiae, extract_minutiae_from_image_file, load_iso_19794_2_2005, sivv, NfiqQuality,
 };
 pub use errors::NbisError;
 pub use minutia::{Minutia, MinutiaKind, Position};

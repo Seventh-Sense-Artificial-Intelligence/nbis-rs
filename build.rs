@@ -43,7 +43,10 @@ fn main() {
             .define("ANDROID_ABI", abi)
             .define("ANDROID_STL", "c++_static")
             .define("CMAKE_CXX_STANDARD", "14")
-            .define("CMAKE_TOOLCHAIN_FILE", format!("{}/build/cmake/android.toolchain.cmake", ndk));
+            .define(
+                "CMAKE_TOOLCHAIN_FILE",
+                format!("{}/build/cmake/android.toolchain.cmake", ndk),
+            );
     }
 
     cc::Build::new()
@@ -147,14 +150,18 @@ fn main() {
     if is_android {
         use std::fs;
 
-        let abi = android_abi_from_target(&target)
-            .expect("Unsupported Android target");
+        let abi = android_abi_from_target(&target).expect("Unsupported Android target");
 
         let out_dir = dst.display().to_string();
         let opencv_lib_dir = dst.join("build").join("lib").join(abi);
 
         // List of expected OpenCV static libs
-        for lib in &["opencv_core", "opencv_imgproc", "opencv_highgui", "opencv_legacy"] {
+        for lib in &[
+            "opencv_core",
+            "opencv_imgproc",
+            "opencv_highgui",
+            "opencv_legacy",
+        ] {
             let src = opencv_lib_dir.join(format!("lib{}.a", lib));
             let dst = std::path::Path::new(&out_dir).join(format!("lib{}.a", lib));
             if src.exists() {
@@ -170,8 +177,6 @@ fn main() {
         // macOS path
         println!("cargo:rustc-link-search=native={}/lib", dst.display());
     }
-
-
 
     println!("cargo:rustc-link-lib=static=opencv_core");
     println!("cargo:rustc-link-lib=static=opencv_imgproc");

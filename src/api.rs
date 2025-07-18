@@ -13,10 +13,38 @@ use crate::consts::MM_PER_INCH;
 use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
 use crate::ffi::{
-    comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts, dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2, sivv_ffi_from_bytes, znorm_fniq_featvctr, LFSPARMS, MINUTIAE, MIN_MINUTIAE, NFIQ_NUM_CLASSES, NFIQ_VCTRLEN
+    comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts,
+    dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2,
+    sivv_ffi_from_bytes, znorm_fniq_featvctr, LFSPARMS, MINUTIAE, MIN_MINUTIAE, NFIQ_NUM_CLASSES,
+    NFIQ_VCTRLEN,
 };
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
+
+/// Represents the result of the SIVV computation.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct SIVVResult {
+    /// Index of the largest peak-valley pair (1-based)
+    pub largest_pvp_index: i32,
+
+    /// Total number of detected peak-valley pairs
+    pub total_pvps: i32,
+
+    /// Power difference between the peak and valley
+    pub power_diff: f64,
+
+    /// Frequency difference between the peak and valley
+    pub freq_diff: f64,
+
+    /// Slope between valley and peak (dy / dx)
+    pub slope: f64,
+
+    /// Frequency of the midpoint between valley and peak
+    pub center_frequency: f64,
+
+    /// Absolute frequency of the peak (undocumented in comments)
+    pub peak_frequency: f64,
+}
 
 /// Represents the result of the NFIQ computation.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -69,7 +97,7 @@ impl NfiqQuality {
 }
 
 #[uniffi::export]
-pub fn sivv(image: &[u8]) -> Result<String, NbisError> {
+pub fn sivv(image: &[u8]) -> Result<SIVVResult, NbisError> {
     // 0) Load the image ------------------------------------------------------
     let image = match image::load_from_memory(image) {
         Ok(img) => img,
@@ -83,8 +111,32 @@ pub fn sivv(image: &[u8]) -> Result<String, NbisError> {
     };
 
     unsafe {
-        let ptr = sivv_ffi_from_bytes(gray.as_ptr() as *mut c_uchar, gray.width() as i32, gray.height() as i32);
-        Ok(CStr::from_ptr(ptr).to_string_lossy().into_owned())
+        let ptr = sivv_ffi_from_bytes(
+            gray.as_ptr() as *mut c_uchar,
+            gray.width() as i32,
+            gray.height() as i32,
+        );
+        let str_result = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+        // Split the result into parts
+        let parts: Vec<&str> = str_result.split(',').map(|s| s.trim()).collect();
+        if parts.len() != 7 {
+            return Err(NbisError::GenericError(
+                "Invalid SIVV result format".to_string(),
+            ));
+        }
+
+        // Parse the parts into the SIVVResult struct
+        let result = SIVVResult {
+            largest_pvp_index: parts[0].parse().unwrap_or_default(),
+            total_pvps: parts[1].parse().unwrap_or_default(),
+            power_diff: parts[2].parse().unwrap_or_default(),
+            freq_diff: parts[3].parse().unwrap_or_default(),
+            slope: parts[4].parse().unwrap_or_default(),
+            center_frequency: parts[5].parse().unwrap_or_default(),
+            peak_frequency: parts[6].parse().unwrap_or_default(),
+        };
+
+        Ok(result)
     }
 }
 
@@ -666,5 +718,12 @@ mod tests {
         let res2_n_2 = extract_minutiae(&n_2, None).unwrap();
         let score_n_2 = res1_n_2.compare(&res2_n_2);
         println!("{:?}", score_n_2);
+    }
+
+    #[test]
+    fn test_sivv() {
+        let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
+        let sivv_result = sivv(&p1_1).unwrap();
+        println!("SIVV result: {:?}", sivv_result);
     }
 }
