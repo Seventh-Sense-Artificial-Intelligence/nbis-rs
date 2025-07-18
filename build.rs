@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, path::Path};
 
 fn android_abi_from_target(target: &str) -> Option<&'static str> {
     if target.contains("aarch64") {
@@ -20,6 +20,7 @@ fn main() {
 
     let target = env::var("TARGET").unwrap_or_default();
     let is_android = target.contains("android");
+    let is_linux = target.contains("linux") && !target.contains("android");
 
     // ---- CMake for OpenCV ----
     let mut cmake = cmake::Config::new("ext/opencv-2.4.13.6");
@@ -127,6 +128,28 @@ fn main() {
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         .compile("mindtct");
 
+    cc::Build::new()
+        .cpp(true)
+        .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
+        .file("ext/nbis/misc/sivv/src/SIVVGraph.cpp")
+        .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
+        .include("ext/nbis/misc/sivv/include")
+        .include("ext/opencv-2.4.13.6/include")
+        .include("ext/opencv-2.4.13.6/include/opencv")
+        .include("ext/opencv-2.4.13.6/modules/core/include")
+        .include("ext/opencv-2.4.13.6/modules/imgproc/include")
+        .include("ext/opencv-2.4.13.6/modules/video/include")
+        .include("ext/opencv-2.4.13.6/modules/features2d/include")
+        .include("ext/opencv-2.4.13.6/modules/flann/include")
+        .include("ext/opencv-2.4.13.6/modules/calib3d/include")
+        .include("ext/opencv-2.4.13.6/modules/objdetect/include")
+        .include("ext/opencv-2.4.13.6/modules/legacy/include")
+        .include("ext/opencv-2.4.13.6/modules/highgui/include")
+        .define("NOVERBOSE", None) // you probably don’t want stdout spam
+        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
+        .flag_if_supported("-Wno-everything") // extra if using
+        .compile("sivv");
+
     let dst = cmake
         .define("BUILD_SHARED_LIBS", "OFF")
         .define("BUILD_PNG", "OFF")
@@ -151,27 +174,27 @@ fn main() {
         .define("CMAKE_CXX_STANDARD", "14")
         .build();
 
-    if is_android {
+    if is_android || is_linux {
         use std::fs;
 
-        let abi = android_abi_from_target(&target).expect("Unsupported Android target");
-
         let out_dir = dst.display().to_string();
-        let opencv_lib_dir = dst.join("build").join("lib").join(abi);
+        let opencv_lib_dir = if is_android {
+            let abi = android_abi_from_target(&target).expect("Unsupported Android target");
+            dst.join("build").join("lib").join(abi)
+        } else {
+            dst.join("build").join("lib")
+        };
 
         // List of expected OpenCV static libs
-        for lib in &[
-            "opencv_core",
-            "opencv_imgproc",
-            "opencv_highgui",
-            "opencv_legacy",
-        ] {
-            let src = opencv_lib_dir.join(format!("lib{}.a", lib));
-            let dst = std::path::Path::new(&out_dir).join(format!("lib{}.a", lib));
-            if src.exists() {
-                fs::copy(&src, &dst).unwrap_or_else(|_| panic!("Failed to copy {}", lib));
-            } else {
-                panic!("Missing static lib: {}", src.display());
+        for entry in fs::read_dir(&opencv_lib_dir).expect("Failed to read OpenCV lib dir") {
+            let entry = entry.expect("Failed to read dir entry");
+            let path = entry.path();
+
+            if path.extension().map_or(false, |ext| ext == "a") {
+                let filename = path.file_name().unwrap();
+                let dst_path = Path::new(&out_dir).join(filename);
+                fs::copy(&path, &dst_path)
+                    .unwrap_or_else(|_| panic!("Failed to copy static lib {}", path.display()));
             }
         }
 
@@ -187,28 +210,6 @@ fn main() {
     println!("cargo:rustc-link-lib=static=opencv_highgui");
     println!("cargo:rustc-link-lib=static=opencv_legacy"); // needed by highgui in 2.4.x
     println!("cargo:rustc-link-lib=z");
-
-    cc::Build::new()
-        .cpp(true)
-        .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
-        .file("ext/nbis/misc/sivv/src/SIVVGraph.cpp")
-        .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
-        .include("ext/nbis/misc/sivv/include")
-        .include("ext/opencv-2.4.13.6/include")
-        .include("ext/opencv-2.4.13.6/include/opencv")
-        .include("ext/opencv-2.4.13.6/modules/core/include")
-        .include("ext/opencv-2.4.13.6/modules/imgproc/include")
-        .include("ext/opencv-2.4.13.6/modules/video/include")
-        .include("ext/opencv-2.4.13.6/modules/features2d/include")
-        .include("ext/opencv-2.4.13.6/modules/flann/include")
-        .include("ext/opencv-2.4.13.6/modules/calib3d/include")
-        .include("ext/opencv-2.4.13.6/modules/objdetect/include")
-        .include("ext/opencv-2.4.13.6/modules/legacy/include")
-        .include("ext/opencv-2.4.13.6/modules/highgui/include")
-        .define("NOVERBOSE", None) // you probably don’t want stdout spam
-        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .flag_if_supported("-Wno-everything") // extra if using
-        .compile("sivv");
 
     // Automatically re-run build.rs if these files change
     println!("cargo:rerun-if-changed=ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c");
