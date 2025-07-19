@@ -23,7 +23,7 @@ fn main() {
     let is_linux = target.contains("linux") && !target.contains("android");
 
     // ---- CMake for OpenCV ----
-    let mut cmake = cmake::Config::new("ext/opencv-2.4.13.6");
+    let mut cmake = cmake::Config::new("ext/opencv-4.10.0");
 
     if is_android {
         let ndk = env::var("ANDROID_NDK_HOME").expect("ANDROID_NDK_HOME not set");
@@ -128,28 +128,6 @@ fn main() {
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         .compile("mindtct");
 
-    cc::Build::new()
-        .cpp(true)
-        .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
-        .file("ext/nbis/misc/sivv/src/SIVVGraph.cpp")
-        .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
-        .include("ext/nbis/misc/sivv/include")
-        .include("ext/opencv-2.4.13.6/include")
-        .include("ext/opencv-2.4.13.6/include/opencv")
-        .include("ext/opencv-2.4.13.6/modules/core/include")
-        .include("ext/opencv-2.4.13.6/modules/imgproc/include")
-        .include("ext/opencv-2.4.13.6/modules/video/include")
-        .include("ext/opencv-2.4.13.6/modules/features2d/include")
-        .include("ext/opencv-2.4.13.6/modules/flann/include")
-        .include("ext/opencv-2.4.13.6/modules/calib3d/include")
-        .include("ext/opencv-2.4.13.6/modules/objdetect/include")
-        .include("ext/opencv-2.4.13.6/modules/legacy/include")
-        .include("ext/opencv-2.4.13.6/modules/highgui/include")
-        .define("NOVERBOSE", None) // you probably don’t want stdout spam
-        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .flag_if_supported("-Wno-everything") // extra if using
-        .compile("sivv");
-
     let dst = cmake
         .define("BUILD_SHARED_LIBS", "OFF")
         .define("BUILD_PNG", "OFF")
@@ -160,19 +138,40 @@ fn main() {
         .define("WITH_FFMPEG", "OFF")
         .define("WITH_CUDA", "OFF")
         .define("WITH_CUDNN", "OFF")
+        .define("WITH_GSTREAMER", "OFF")
+        .define("WITH_V4L",       "OFF")
+        .define("WITH_V4L2",      "OFF")
+        .define("WITH_LIBV4L",    "OFF")
+        .define("WITH_IPP",        "OFF")
+        .define("BUILD_IPP_IW",    "OFF")
+        .define("WITH_ITT",    "OFF")
+        .define("BUILD_opencv_hal", "ON")
         .define("BUILD_opencv_python2", "OFF")
         .define("BUILD_opencv_python3", "OFF")
+        .define("BUILD_opencv_python_bindings_generator", "OFF")
         .define("BUILD_opencv_videoio", "OFF")
-        .define(
-            "BUILD_LIST",
-            "core,imgproc,video,features2d,flann,calib3d,objdetect,legacy,highgui",
-        ) // only build needed modules
+        // .define(
+        //     "BUILD_LIST",
+        //     "core,imgproc,hal",
+        // ) // only build needed modules
         .define("BUILD_EXAMPLES", "OFF")
         .define("BUILD_TESTS", "OFF")
         .define("BUILD_ZLIB", "OFF")
         .define("BUILD_PERF_TESTS", "OFF")
         .define("CMAKE_CXX_STANDARD", "14")
         .build();
+
+    cc::Build::new()
+        .cpp(true)
+        .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
+        .file("ext/nbis/misc/sivv/src/SIVVGraph.cpp")
+        .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
+        .include("ext/nbis/misc/sivv/include")
+        .include(dst.join("include/opencv4"))
+        .define("NOVERBOSE", None) // you probably don’t want stdout spam
+        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
+        .flag_if_supported("-Wno-everything") // extra if using
+        .compile("sivv");
 
     if is_android || is_linux {
         use std::fs;
@@ -205,10 +204,8 @@ fn main() {
         println!("cargo:rustc-link-search=native={}/lib", dst.display());
     }
 
-    println!("cargo:rustc-link-lib=static=opencv_core");
     println!("cargo:rustc-link-lib=static=opencv_imgproc");
-    println!("cargo:rustc-link-lib=static=opencv_highgui");
-    println!("cargo:rustc-link-lib=static=opencv_legacy"); // needed by highgui in 2.4.x
+    println!("cargo:rustc-link-lib=static=opencv_core");
     println!("cargo:rustc-link-lib=z");
 
     // Automatically re-run build.rs if these files change

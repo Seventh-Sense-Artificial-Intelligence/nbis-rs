@@ -1,5 +1,7 @@
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>      // brings in cv::morphologyEx, cv::Mat, etc.
+#include <opencv2/imgproc/imgproc_c.h>   // for cvGetHistValue_1D
+#include <opencv2/core/core_c.h>         // for cvMinMaxLoc
 #include <cstring> // for memcpy
 #include <string>
 

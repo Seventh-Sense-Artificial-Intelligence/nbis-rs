@@ -58,7 +58,10 @@ identified are necessarily the best available for the purpose.
 using namespace std;
 
 /* OpenCV includes */
-#include <opencv/cv.h>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>      // brings in cv::morphologyEx, cv::Mat, etc.
+#include <opencv2/imgproc/imgproc_c.h>   // for cvGetHistValue_1D
+#include <opencv2/core/core_c.h>         // for cvMinMaxLoc
 // #include <opencv/highgui.h>
 
 /* SIVV includes */

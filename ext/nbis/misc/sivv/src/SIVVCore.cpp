@@ -96,7 +96,11 @@ using namespace std;
 #include <stdio.h>
 
 /* OpenCV includes */
-#include <opencv/cv.h>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>      // brings in cv::morphologyEx, cv::Mat, etc.
+#include <opencv2/imgproc/imgproc_c.h>   // for cvGetHistValue_1D
+#include <opencv2/core/core_c.h>         // for cvMinMaxLoc
+//#include <opencv2/highgui/highgui_c.h>
 // #include <opencv/highgui.h>
 
 
@@ -1991,7 +1995,31 @@ CvPoint find_fingerprint_center_morph(IplImage* src, int *xbound_min, int *xboun
 	//moments_start = clock();
 
 	// Copy binarized MAT to IMG
-  	IplImage bwimg = cvmatClosedOutputImg;
+	// 1) Compute the correct depth (in bits) from your Mat’s element size:
+	int depthBits = cvmatClosedOutputImg.elemSize1() * 8;  
+
+	// 2) Create a “header” IplImage that points into the Mat’s data buffer:
+	IplImage* bwimg_hdr = cvCreateImageHeader(
+		cvSize(cvmatClosedOutputImg.cols, cvmatClosedOutputImg.rows),
+		depthBits,
+		cvmatClosedOutputImg.channels()
+	);
+
+	// 3) Point that header at the Mat’s own memory:
+	cvSetData(
+		bwimg_hdr,
+		const_cast<uchar*>(cvmatClosedOutputImg.data),
+		static_cast<int>(cvmatClosedOutputImg.step)
+	);
+
+	// 4) Copy‐out the header struct into your stack variable:
+	IplImage bwimg = *bwimg_hdr;
+
+	// 5) You can now call all your old IplImage‐based routines on ‘bwimg’…
+
+	// 6) And finally, free the header (not the data!):
+	cvReleaseImageHeader(&bwimg_hdr);
+  	//IplImage bwimg = cvmatClosedOutputImg;
 
 	//alternate "moments" method
 	CvMoments *moments = (CvMoments*)malloc(sizeof(CvMoments));
