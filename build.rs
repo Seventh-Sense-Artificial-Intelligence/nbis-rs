@@ -45,7 +45,10 @@ fn main() {
             .define("ANDROID_STL", "c++_static")
             .define("INSTALL_CREATE_DISTRIB", "ON")
             .define("CMAKE_INSTALL_PREFIX", "opencv_install")
-            .define("CMAKE_INSTALL_INCLUDEDIR", "opencv_install/sdk/native/jni/include")
+            .define(
+                "CMAKE_INSTALL_INCLUDEDIR",
+                "opencv_install/sdk/native/jni/include",
+            )
             .define("CMAKE_INSTALL_LIBDIR", "opencv_install/sdk/native/libs")
             .define("BUILD_ANDROID_PROJECTS", "OFF")
             .define("BUILD_ANDROID_EXAMPLES", "OFF")
@@ -165,10 +168,7 @@ fn main() {
         .define("BUILD_opencv_python3", "OFF")
         .define("BUILD_opencv_python_bindings_generator", "OFF")
         .define("BUILD_opencv_videoio", "OFF")
-        .define(
-            "BUILD_LIST",
-            "core,imgproc",
-        ) // only build needed modules
+        .define("BUILD_LIST", "core,imgproc") // only build needed modules
         .define("BUILD_EXAMPLES", "OFF")
         .define("BUILD_TESTS", "OFF")
         .define("BUILD_ZLIB", "OFF")
@@ -179,7 +179,8 @@ fn main() {
     // Print dst as a warning for the user
     //eprintln!("OpenCV build directory: {}", dst.display());
 
-    cc::Build::new().cpp(true)
+    cc::Build::new()
+        .cpp(true)
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/SIVVGraph.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")

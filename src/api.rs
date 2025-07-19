@@ -22,28 +22,27 @@ use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
 
 /// Represents the result of the SIVV computation.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct SIVVResult {
+pub(crate) struct SIVVResult {
     /// Index of the largest peak-valley pair (1-based)
-    pub largest_pvp_index: i32,
+    pub(crate) largest_pvp_index: i32,
 
     /// Total number of detected peak-valley pairs
-    pub total_pvps: i32,
+    pub(crate) total_pvps: i32,
 
     /// Power difference between the peak and valley
-    pub power_diff: f64,
+    pub(crate) power_diff: f64,
 
     /// Frequency difference between the peak and valley
-    pub freq_diff: f64,
+    pub(crate) freq_diff: f64,
 
     /// Slope between valley and peak (dy / dx)
-    pub slope: f64,
+    pub(crate) slope: f64,
 
     /// Frequency of the midpoint between valley and peak
-    pub center_frequency: f64,
+    pub(crate) center_frequency: f64,
 
     /// Absolute frequency of the peak (undocumented in comments)
-    pub peak_frequency: f64,
+    pub(crate) peak_frequency: f64,
 }
 
 /// Represents the result of the NFIQ computation.
@@ -101,6 +100,12 @@ fn is_fingerprint(result: &SIVVResult) -> bool {
     // on a mixed biometric dataset.
     let max_peak_freq = 0.15; // cycles/pixel
     let peak_height_threshold = 0.02;
+    let _ = result.largest_pvp_index; // 1-based index, not used here
+    let _ = result.total_pvps; // total number of peak-valley pairs, not used here
+    let _ = result.freq_diff; // frequency difference, not used here
+    let _ = result.slope; // slope, not used here
+    let _ = result.center_frequency; // center frequency, not used here
+
     result.peak_frequency < max_peak_freq && result.power_diff > peak_height_threshold
 }
 
@@ -169,8 +174,8 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
         // Early return if the image is not a fingerprint
         return Ok(Minutiae::new(
             Vec::new(),
-            iw as u32,
-            ih as u32,
+            iw,
+            ih,
             NfiqResult {
                 nfiq: NfiqQuality::Unknown,
                 confidence: 0.0,
