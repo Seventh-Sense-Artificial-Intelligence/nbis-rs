@@ -43,6 +43,14 @@ fn main() {
             .define("ANDROID_NATIVE_API_LEVEL", "21")
             .define("ANDROID_ABI", abi)
             .define("ANDROID_STL", "c++_static")
+            .define("INSTALL_CREATE_DISTRIB", "ON")
+            .define("CMAKE_INSTALL_PREFIX", "opencv_install")
+            .define("CMAKE_INSTALL_INCLUDEDIR", "opencv_install/sdk/native/jni/include")
+            .define("CMAKE_INSTALL_LIBDIR", "opencv_install/sdk/native/libs")
+            .define("BUILD_ANDROID_PROJECTS", "OFF")
+            .define("BUILD_ANDROID_EXAMPLES", "OFF")
+            .define("BUILD_opencv_java", "OFF")
+            .build_target("install")
             .define(
                 "CMAKE_TOOLCHAIN_FILE",
                 format!("{}/build/cmake/android.toolchain.cmake", ndk),
@@ -130,30 +138,37 @@ fn main() {
 
     let dst = cmake
         .define("BUILD_SHARED_LIBS", "OFF")
+        // Disbale image codecs we don't need
         .define("BUILD_PNG", "OFF")
         .define("BUILD_JPEG", "OFF")
         .define("BUILD_TIFF", "OFF")
         .define("BUILD_WEBP", "OFF")
         .define("BUILD_OPENJPEG", "OFF")
+        // For Mac
+        .define("WITH_TEGRA", "OFF")
+        .define("WITH_CAROTENE", "OFF") // ← stop building the carotene_o4t HAL
+        .define("WITH_LAPACK", "OFF")
+        .define("WITH_OPENCL", "OFF")
+        // disable unnecessary modules
         .define("WITH_FFMPEG", "OFF")
         .define("WITH_CUDA", "OFF")
         .define("WITH_CUDNN", "OFF")
         .define("WITH_GSTREAMER", "OFF")
-        .define("WITH_V4L",       "OFF")
-        .define("WITH_V4L2",      "OFF")
-        .define("WITH_LIBV4L",    "OFF")
-        .define("WITH_IPP",        "OFF")
-        .define("BUILD_IPP_IW",    "OFF")
-        .define("WITH_ITT",    "OFF")
+        .define("WITH_V4L", "OFF")
+        .define("WITH_V4L2", "OFF")
+        .define("WITH_LIBV4L", "OFF")
+        .define("WITH_IPP", "OFF")
+        .define("BUILD_IPP_IW", "OFF")
+        .define("WITH_ITT", "OFF")
         .define("BUILD_opencv_hal", "ON")
         .define("BUILD_opencv_python2", "OFF")
         .define("BUILD_opencv_python3", "OFF")
         .define("BUILD_opencv_python_bindings_generator", "OFF")
         .define("BUILD_opencv_videoio", "OFF")
-        // .define(
-        //     "BUILD_LIST",
-        //     "core,imgproc,hal",
-        // ) // only build needed modules
+        .define(
+            "BUILD_LIST",
+            "core,imgproc",
+        ) // only build needed modules
         .define("BUILD_EXAMPLES", "OFF")
         .define("BUILD_TESTS", "OFF")
         .define("BUILD_ZLIB", "OFF")
@@ -161,13 +176,17 @@ fn main() {
         .define("CMAKE_CXX_STANDARD", "14")
         .build();
 
-    cc::Build::new()
-        .cpp(true)
+    // Print dst as a warning for the user
+    //eprintln!("OpenCV build directory: {}", dst.display());
+
+    cc::Build::new().cpp(true)
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/SIVVGraph.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
         .include(dst.join("include/opencv4"))
+        // Additional includes for Android
+        .include(dst.join("build/opencv_install/sdk/native/jni/include"))
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         .flag_if_supported("-Wno-everything") // extra if using
