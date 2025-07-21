@@ -13,10 +13,7 @@ use crate::consts::MM_PER_INCH;
 use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
 use crate::ffi::{
-    comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts,
-    dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2,
-    sivv_ffi_from_bytes, znorm_fniq_featvctr, LFSPARMS, MINUTIAE, MIN_MINUTIAE, NFIQ_NUM_CLASSES,
-    NFIQ_VCTRLEN,
+    comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts, dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2, sivv_ffi_free_bytes, sivv_ffi_from_bytes, znorm_fniq_featvctr, LFSPARMS, MINUTIAE, MIN_MINUTIAE, NFIQ_NUM_CLASSES, NFIQ_VCTRLEN
 };
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
@@ -117,6 +114,8 @@ fn sivv(image: *mut c_uchar, width: i32, height: i32) -> Result<SIVVResult, Nbis
             height as std::os::raw::c_int,
         );
         let str_result = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+        sivv_ffi_free_bytes(ptr);
+        println!("Raw SIVV result: {}", str_result);
         // Split the result into parts
         let parts: Vec<&str> = str_result.split(',').map(|s| s.trim()).collect();
         if parts.len() != 7 {
@@ -542,6 +541,12 @@ pub fn annotate_minutiae_from_image_file(
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn test_one_path() {
+        let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
+        let _res = extract_minutiae(&p1_1, None).unwrap();
+    }
 
     #[test]
     fn test_match() {

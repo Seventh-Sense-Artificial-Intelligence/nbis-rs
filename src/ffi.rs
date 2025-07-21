@@ -6,7 +6,7 @@
     clippy::upper_case_acronyms
 )]
 use libc::FILE;
-use std::os::raw::{c_double, c_int, c_uchar, c_void};
+use std::os::raw::{c_char, c_double, c_int, c_uchar, c_void};
 use std::sync::Once;
 
 /* -----------------------------------------------------------------------
@@ -287,9 +287,10 @@ extern "C" {
 }
 
 extern "C" {
-    pub fn sivv_ffi_from_bytes(
+    pub(crate) fn sivv_ffi_from_bytes(
         data: *const u8,
-        width: std::os::raw::c_int,
-        height: std::os::raw::c_int,
-    ) -> *const std::os::raw::c_char;
+        width: c_int,
+        height: c_int,
+    ) -> *mut c_char;
+    pub(crate) fn sivv_ffi_free_bytes(ptr: *mut c_char);
 }

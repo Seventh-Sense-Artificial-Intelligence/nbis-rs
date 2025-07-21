@@ -309,6 +309,11 @@ void apply_tukey_window(const IplImage *const src, IplImage *const dst)
 	//dump_image("Window: Combined", tka, 0, 0);
 
    cvMul(src, tka, dst, 1.0);
+
+   // Cleanup
+   cvReleaseImage(&hor);
+   cvReleaseImage(&ver);
+   cvReleaseImage(&tka);
 }
 
 
@@ -345,6 +350,11 @@ void apply_blackman_window(const IplImage *const src, IplImage *const dst)
    cvGEMM(ver, hor, 1.0, NULL, 0.0, bwa, CV_GEMM_A_T);
 
    cvMul(src, bwa, dst, 1.0);
+
+   // Cleanup
+   cvReleaseImage(&hor);
+   cvReleaseImage(&ver);
+   cvReleaseImage(&bwa);
 }
 
 /*******************************************************************************
@@ -502,6 +512,10 @@ void polar_transform(const IplImage *const src, IplImage *const dst, const int f
 		}
 	}
 	cvRemap(src, dst, mapx, mapy, flags, cvScalarAll(0));
+
+	// Cleanup
+	cvReleaseImage(&mapx);
+	cvReleaseImage(&mapy);
 }
 
 /*******************************************************************************
@@ -559,6 +573,7 @@ void diagonal_shuffle_quadrants(const CvArr *const src, CvArr *const dst)
       SWAP(srcq[0], srcq[2]);
       SWAP(srcq[1], srcq[3]);
 #undef SWAP
+	cvReleaseMat(&tmp);
    } else {
       QUARTER(dst);
       cvCopy(srcq[0], dstq[2], 0);
@@ -586,13 +601,13 @@ DESCRIPTION:	Compute the log power spectrum of the DFT image.
 						Src and dst may be equal.
 
 *******************************************************************************/
-void log_power_spectrum(const IplImage *const src, IplImage *const dst)
+IplImage* log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage *dft_comb, IplImage *dft_dpy)
 {
-   IplImage *dft_imgy, *dft_real, *dft_comb, *dft_dpy, *dft_zero;
+   IplImage *dst = cvCreateImage(cvGetSize(src), src->depth, src->nChannels);
+   IplImage *dft_imgy, *dft_zero;
 
    /*   Prepare the real and empty imaginary planes */
    dft_imgy = cvCreateImage(cvGetSize(src), src->depth, 1);
-   dft_comb = cvCreateImage(cvGetSize(src), src->depth, 2);
    cvZero(dft_imgy);
    cvMerge(src, dft_imgy, NULL, NULL, dft_comb);
 
@@ -600,13 +615,12 @@ void log_power_spectrum(const IplImage *const src, IplImage *const dst)
    cvDFT(dft_comb, dft_comb, CV_DXT_FORWARD, 0);
 
    /* Separate the real and imgy planes in the result */
-   dft_real = cvCreateImage(cvGetSize(src), src->depth, 1);
    cvSplit(dft_comb, dft_real, dft_imgy, NULL, NULL);
 
    /*   Combine real and imaginary planes, along with a plane of
         zeros, to produce a color image to display.  The default
         interpretation of the color planes appears to be BGR. */
-   dft_dpy = cvCreateImage(cvGetSize(src), src->depth, 3);
+   
    dft_zero = cvCreateImage(cvGetSize(src), src->depth, 1);
    cvZero(dft_zero);
    cvMerge(dft_zero, dft_real, dft_imgy, NULL, dft_dpy);   
@@ -614,6 +628,7 @@ void log_power_spectrum(const IplImage *const src, IplImage *const dst)
    diagonal_shuffle_quadrants(dft_dpy, dft_dpy);
 
    cvSplit(dft_dpy, dft_zero, dft_real, dft_imgy, NULL);
+   cvReleaseImage(&dft_zero);
 
    /* Compute the magnitude of the spectrum Mag = sqrt(Re^2 + Im^2) */
    cvPow(dft_real, dft_real, 2.0);
@@ -628,6 +643,10 @@ void log_power_spectrum(const IplImage *const src, IplImage *const dst)
 
    /* Write results out to dst */
    cvConvertScale(dft_imgy, dst, 1.0, 0);
+
+   // Cleanup
+   cvReleaseImage(&dft_imgy);
+   return dst;
 }
 
 /*******************************************************************************
@@ -684,6 +703,9 @@ void sum_rows(const IplImage *const src, vector<double> &rowsums)
 		sum = cvSum(row);
 		rowsums[i] = sum.val[0];
 	}
+
+	// Cleanup
+	cvReleaseMat(&row);
 }
 
 /*******************************************************************************
@@ -714,6 +736,9 @@ void sum_cols(const IplImage *const src, vector<double> &colsums)
 		sum = cvSum(col);
 		colsums[i] = sum.val[0];
 	}
+
+	// Cleanup
+	cvReleaseMat(&col);
 }
 
 /*******************************************************************************
@@ -968,36 +993,6 @@ double cvp_distance(const CvPoint a, const CvPoint b)
 }
 
 /*******************************************************************************
-FUNCTION NAME:	crop_image()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Crops the specified area from the source image (src) into the 
-				destination image (dst). The destination image must already be
-				properly sized and cannot be equal to the source image.
-
-
-	INPUT:
-		src				- The source image
-		dst				- The destination image
-		xbound_min		- The minimum x-value bounding the area to be cropped 
-		xbound_max		- The maximum x-value bounding the area to be cropped 
-		ybound_min		- The minimum y-value bounding the area to be cropped 
-		ybound_max		- The maximum y-value bounding the area to be cropped 
-
-	OUTPUT:
-		dst				- An image containing the cropped area of the source
-						image
-
-*******************************************************************************/
-void crop_image(const IplImage *const src, IplImage *const dst, int xbound_min, int xbound_max, int ybound_min, int ybound_max)
-{
-	CvMat *crop_mat = cvCreateMat(dst->width, dst->height, dst->depth); 
-	cvGetSubRect(src, crop_mat, cvRect(xbound_min, ybound_min, dst->width, dst->height));
-	cvCopy(crop_mat, dst, NULL);
-}
-
-/*******************************************************************************
 FUNCTION NAME:	peak_finder()
 
 AUTHOR:			John D. Grantham
@@ -1185,8 +1180,11 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 
 	
 	/*	Compute log polar power spectrum */
-	IplImage *img_lps = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, img_dfp->nChannels);
-	log_power_spectrum(img_dfp, img_lps);
+	IplImage *dft_comb = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, 2);
+	IplImage *dft_real = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, 1);
+   	IplImage *dft_dpy = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, 3);
+	log_power_spectrum(img_dfp, dft_real, dft_comb, dft_dpy);
+	IplImage *img_lps = log_power_spectrum(img_dfp, dft_real, dft_comb, dft_dpy);
 	if (textonly == 0)
 	{
 		//dump_image("Log Power Spectrum", img_lps, 0, verbose);
@@ -1311,6 +1309,11 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 		*signal = rowsums;
 	}
 
+	// Cleanup
+	// cvReleaseImage(&dft_dpy);
+	// cvReleaseImage(&dft_real);
+	// cvReleaseImage(&dft_comb);
+	
 	return results;
 }
 
@@ -1326,338 +1329,6 @@ string sivv(IplImage *src)
 	}
 
 	return results;
-}
-
-/*******************************************************************************
-FUNCTION NAME:	lps()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Performs a generalized version of the standard SIVV process on 
-				a given image, using either default (see overload below) or 
-				given parameters. This generalized version of the process is
-				intended for other applications which are not specific to the
-				intended validation and verification purposes for which SIVV
-				was originally designed. 
-
-
-	INPUT:
-		img				- An image to be processed by SIVV
-		window			- A flag for turning on/off the windowing step in the
-						SIVV process
-		smoothscale		- A flag for setting the number of points to be used
-						in the signal smoothing algorithm (see the
-						smooth_sums() function definition above)
-		verbose			- A flag for turning on/off "verbose" mode, useful for
-						debugging the SIVV process
-		textonly		- A flag for turning on/off the "textonly mode", which 
-						determines whether the output is displayed graphically
-						or as text only
-
-	OUTPUT:
-		return			- A vector of values comprising the 1D signal resulting
-						from the image
-
-
-*******************************************************************************/
-vector<double> lps(IplImage *src, int window, int smoothscale, int verbose, int textonly)
-{
-	vector<double> signal;
-
-	IplImage *img, *img_dfp, *img_polar, *polar_trans;
-	double grey_scale_factor;
-
-	if (window != 0)
-		window = 1;
-
-	if (smoothscale < 1)
-		smoothscale = 1;
-
-	if (verbose != 0)
-		verbose = 1;
-
-	if (textonly != 0)
-		textonly = 1;
-
-	img = cvCreateImage(cvGetSize(src), src->depth, 1);
-
-	/* Check if source image is in color and convert to grayscale if so, otherwise copy to working image */
-	if (src->nChannels > 1)
-	{
-		cvCvtColor(src, img, CV_RGB2GRAY);
-	}
-	else
-	{
-		cvCopy(src, img);
-	}
-
-
-    /* Convert image data to double precision floating point values 0.0 to 1.0 */
-	img_dfp = cvCreateImage(cvGetSize(img), IPL_DEPTH_64F, 1);
-	grey_scale_factor = 1.0 / 255.0;
-	cvConvertScale(img, img_dfp, grey_scale_factor, 0.0);
-
-
-    /* Apply 2D Blackman Window Function (if specified at command line or by default) */
-	if (window == 1)
-	{
-		apply_blackman_window(img_dfp, img_dfp);
-		if (verbose != 0)
-		{
-			//dump_image("Blackman Window", img_dfp, 0, verbose);
-		}
-	}
-	
-	/*	Compute log polar power spectrum */
-	IplImage *img_lps = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, img_dfp->nChannels);
-	log_power_spectrum(img_dfp, img_lps);
-	if (verbose != 0)
-	{
-		//dump_image("Log Power Spectrum", img_lps, 0, verbose);
-	}
-
-	img_polar = cvCreateImage(cvGetSize(img_lps), IPL_DEPTH_32F, img_lps->nChannels);
-	cvConvertScale(img_lps, img_polar, (1.0 / findmax(img_lps)), 0);
-			
-	/* Polar transform using bicubic interpolation and no filling of outliers */
-	polar_trans = cvCreateImage(cvGetSize(img_polar), img_polar->depth, img_polar->nChannels);
-	polar_transform(img_polar, polar_trans, CV_INTER_CUBIC);
-	
-	if (verbose != 0)
-	{
-		//dump_image("Polar Transform", polar_trans, 0, verbose);
-	}
-
-	/* Reduce LogPolar to angles 0 - 180 */
-	IplImage *polar_trans_half = cvCreateImage(cvSize(polar_trans->width / 2 , polar_trans->height), polar_trans->depth, polar_trans->nChannels);
-	CvMat *polar_trans_half_mat = cvCreateMat(polar_trans->height, polar_trans->width / 2, polar_trans->depth); 
-	cvGetSubRect(polar_trans, polar_trans_half_mat, cvRect(0, 0, polar_trans->width / 2, polar_trans->height));
-	cvCopy(polar_trans_half_mat, polar_trans_half, NULL);
-	
-
-    /* Sum rows of polar transform (0 - 180) */
-	int num_rows = polar_trans_half->height;
-	vector<double> rowsums(num_rows);
-	cvFlip(polar_trans_half, polar_trans_half, 0);
-	sum_rows(polar_trans_half, rowsums);
-	
-	/*	Smooth sums */
-	if (smoothscale > 1)
-		smooth_sums(rowsums, smoothscale); 
-
-	/* Normalize sums to DC (0th) term */
-	normalize_sums(rowsums);
-	signal = rowsums;
-
-	/* Find global min and max */
-	extrenum global_minmax;
-	find_global_minmax(rowsums, global_minmax);
-
-	extrenum *nopeaks = NULL; /* NULL extrenum for graphing function */
-	
-	/* Graph */
-	if (textonly == 0)
-	{
-		IplImage *graph = cvCreateImage(cvSize(500, 500), IPL_DEPTH_32F, 3);
-		
-		graph_sums(graph, rowsums, nopeaks, &global_minmax, cvScalar(255,0,0));
-		//dump_image("1D Power Spectrum Graph", graph, 1, 0);
-	}
-
-	return signal;
-}
-
-/* LPS Function Overload for quick use with default values */
-vector<double> lps(IplImage *src)
-{
-	vector<double> signal = lps(src, 0, 7, 0, 1); /* default values */
-	return signal;
-}
-
-
-/*******************************************************************************
-FUNCTION NAME:	generate_histrogram()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Generates a histogram of the image.
-
-	INPUT:
-		src				- An image to be processed
-		graph			- A boolean switch to turn graphing on/off
-		outfile			- An optional string containing the path of a file to
-						  store histrogram values such as "histogram.txt"
-
-	OUTPUT:
-		hist			- The resulting histogram data structure
-
-*******************************************************************************/
-CvHistogram generate_histogram(IplImage* src, bool graph, string outfilepath="")
-{
-	const string label = "Histogram";
-	IplImage* mask = NULL;
-	ofstream outfile;
-
-	int hist_size = 256;
-	float range_0[]={0,256};
-	float* ranges[] = { range_0 };
-	IplImage *image, *hist_image = 0;
-	CvHistogram *hist;
-	int bin_w, i; 
-	float max_value = 0;
-
-	hist_image = cvCreateImage(cvSize(512, 200), 8, 1);
-	hist = cvCreateHist(1, &hist_size, CV_HIST_ARRAY, ranges, 1);
-
-	image = cvCreateImage(cvGetSize(src), src->depth, 1);
-
-	/* Check if source image is in color and convert to grayscale if so, otherwise copy to working image */
-	if (src->nChannels > 1)
-	{
-		cvCvtColor(src, image, CV_RGB2GRAY);
-	}
-	else
-	{
-		cvCopy(src, image);
-	}
-
-	// if (graph)
-	// {
-	// 	cvNamedWindow(label.c_str(), 1);
-	// }
-
-	cvCalcHist(&image, hist, 0, mask);
-	cvGetMinMaxHistValue(hist, 0, &max_value, 0, 0);
-	
-	cvSet(hist_image, cvScalarAll(255), 0);
-	bin_w = cvRound((double)hist_image->width/hist_size);
-	double total_val = 0;
-	double scale_factor = (double)hist_image->height/(double)max_value;
-
-	if (graph)
-	{
-		/* Draw histogram */
-		for(i = 0; i < hist_size; i++)
-		{
-			double bin_val = cvGetReal1D(hist->bins,i);
-			cvRectangle(hist_image, cvPoint(i*bin_w, hist_image->height),  cvPoint((i+1)*bin_w, hist_image->height - cvRound(cvGetReal1D(hist->bins,i) * scale_factor)), cvScalarAll(0), -1, 8, 0);
-			total_val += bin_val;
-		}
-
-		//cvShowImage(label.c_str(), hist_image );
-	}
-
-	// Write to output file... (TO-DO)
-
-	if (outfilepath != "")
-	{
-		outfile.open(outfilepath.c_str());
-
-		if (outfile.fail())
-		{
-			fprintf(stderr, "WARNING: Cannot write to file \"");
-			fprintf(stderr, outfilepath.c_str());
-			fprintf(stderr, "\"!\nHistogram output will not be written to file. Continuing to run SIVV wihout hisogram output...\n");
-		}
-		if (outfile.good())
-		{
-			outfile << "Bin,Count\n";
-			for(i = 0; i < hist_size; i++)
-			{
-				outfile << i << "," << cvGetReal1D(hist->bins,i) << endl;
-			}
-			outfile.close();
-		}
-	}
-
-	return *hist;
-}
-
-/*******************************************************************************
-FUNCTION NAME:	pad_image()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Pads input image up to a specified size using a specified
-				grayscale value
-
-
-	INPUT:
-		src				- An image to be processed
-		new_width		- An int to specify the width of the output image
-		new_height		- An int to specify the height of the output image
-		color			- An int (between 0 and 255) to specify the grayscale
-						value to use when padding the image
-
-	OUTPUT:
-		return			- The resulting padded image
-
-*******************************************************************************/
-IplImage *pad_image(IplImage* src, int new_width, int new_height, int color)
-{
-	IplImage *image = cvCreateImage(cvGetSize(src), src->depth, 1);
-
-	/* Check if source image is in color and convert to grayscale if so, otherwise copy to working image */
-	if (src->nChannels > 1)
-	{
-		cvCvtColor(src, image, CV_RGB2GRAY);
-	}
-	else
-	{
-		cvCopy(src, image);
-	}
-	
-	IplImage* padded = cvCreateImage(cvSize(new_width, new_height), image->depth, 1);
-
-	int pad_left, pad_right, pad_top, pad_bottom;
-
-	pad_left = (padded->width - image->width) / 2;
-	pad_right = padded->width - image->width - pad_left;
-	pad_top = (padded->height - image->height) / 2;
-	pad_bottom = padded->height - image->height - pad_top;
-
-	// Loop to write new image
-	int x, y, val;
-
-	int *rows = new int[padded->height];
-	int *cols = new int[padded->width];
-		
-	for (y = 0; y < padded->height; y++)
-	{
-		rows[y] = 0;
-		for (x = 0; x < padded->width; x++)
-		{
-			if (y == 0)
-			{
-				cols[x] = 0;
-			}
-
-			if ((x <= pad_left || x >= (pad_left + image->width)) || (y <= pad_top || y >= (pad_top + image->height)))
-			{
-				((uchar *)(padded->imageData + padded->widthStep * y))[x] = color;
-			}	
-			else
-			{
-				val = ((uchar *)(image->imageData + image->widthStep * (y-pad_top)))[(x-pad_left)];
-				((uchar *)(padded->imageData + padded->widthStep * y))[x] = val;
-
-				// DEBUG
-				//cout << "(" << x << "," << y << "): " << val << endl;
-			}
-		}
-	}
-
-	// DEBUG
-	//dump_image("Padded Image", padded, 0, 0);
-	//cvWaitKey(0);
-
-	// Clean-up
-	cvReleaseImage(&image);
-	delete [] rows;
-	delete [] cols;
-
-	return padded;	
-	cvReleaseImage(&padded);
 }
 
 /*******************************************************************************

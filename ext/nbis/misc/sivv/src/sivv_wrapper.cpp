@@ -9,9 +9,7 @@
 extern std::string sivv(IplImage* src);
 
 extern "C" {
-    const char* sivv_ffi_from_bytes(const unsigned char* data, int width, int height) {
-        static std::string result;
-
+    char* sivv_ffi_from_bytes(const unsigned char* data, int width, int height) {
         // Create IplImage header (8-bit, 1 channel)
         IplImage* img = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
 
@@ -19,11 +17,19 @@ extern "C" {
         std::memcpy(img->imageData, data, width * height);
 
         // Call original function
-        result = sivv(img);
+        std::string result = sivv(img);
 
         // Cleanup
         cvReleaseImage(&img);
 
-        return result.c_str();
+        // allocate and copy
+        char* out = (char*)std::malloc(result.size() + 1);
+        std::memcpy(out, result.c_str(), result.size() + 1);
+        return out;
+    }
+
+    // free what sivv_ffi_from_bytes() allocated
+    void sivv_ffi_free_bytes(char* ptr) {
+        std::free(ptr);
     }
 }

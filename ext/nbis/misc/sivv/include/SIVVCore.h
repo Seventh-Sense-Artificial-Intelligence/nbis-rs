@@ -262,7 +262,7 @@ DESCRIPTION:	Compute the log power spectrum of the DFT image.
 						Src and dst may be equal.
 
 *******************************************************************************/
-void log_power_spectrum(const IplImage *const src, IplImage *const dst);
+IplImage* log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage *dft_comb, IplImage *dft_dpy);
 
 
 /*******************************************************************************
@@ -478,31 +478,6 @@ DESCRIPTION:	Calculates and returns the distance between two points
 double cvp_distance(const CvPoint a, const CvPoint b);
 
 /*******************************************************************************
-FUNCTION NAME:	crop_image()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Crops the specified area from the source image (src) into the 
-				destination image (dst). The destination image must already be
-				properly sized and cannot be equal to the source image.
-
-
-	INPUT:
-		src				- The source image
-		dst				- The destination image
-		xbound_min		- The minimum x-value bounding the area to be cropped 
-		xbound_max		- The maximum x-value bounding the area to be cropped 
-		ybound_min		- The minimum y-value bounding the area to be cropped 
-		ybound_max		- The maximum y-value bounding the area to be cropped 
-
-	OUTPUT:
-		dst				- An image containing the cropped area of the source
-						image
-
-*******************************************************************************/
-void crop_image(const IplImage *const src, IplImage *const dst, int xbound_min, int xbound_max, int ybound_min, int ybound_max);
-
-/*******************************************************************************
 FUNCTION NAME:	peak_finder()
 
 AUTHOR:			John D. Grantham
@@ -570,84 +545,6 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 
 /* SIVV Function Overload for quick use with default values */
 string sivv(IplImage *src);
-
-/*******************************************************************************
-FUNCTION NAME:	lps()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Performs a generalized version of the standard SIVV process on 
-				a given image, using either default (see overload below) or 
-				given parameters. This generalized version of the process is
-				intended for other applications which are not specific to the
-				intended validation and verification purposes for which SIVV
-				was originally designed. 
-
-
-	INPUT:
-		img				- An image to be processed by SIVV
-		window			- A flag for turning on/off the windowing step in the
-						SIVV process
-		smoothscale		- A flag for setting the number of points to be used
-						in the signal smoothing algorithm (see the
-						smooth_sums() function definition above)
-		verbose			- A flag for turning on/off "verbose" mode, useful for
-						debugging the SIVV process
-		textonly		- A flag for turning on/off the "textonly mode", which 
-						determines whether the output is displayed graphically
-						or as text only
-
-	OUTPUT:
-		return			- A vector of values comprising the 1D signal resulting
-						from the image
-
-
-*******************************************************************************/
-vector<double> lps(IplImage *src, int window, int smoothscale, int verbose, int textonly);
-
-/* LPS Function Overload for quick use with default values */
-vector<double> lps(IplImage *src);
-
-/*******************************************************************************
-FUNCTION NAME:	generate_histrogram()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Generates a histogram of the image.
-
-	INPUT:
-		src				- An image to be processed
-		graph			- A boolean switch to turn graphing on/off
-		outfile			- An optional string containing the path of a file to
-						  store histrogram values such as "histogram.txt"
-
-	OUTPUT:
-		hist			- The resulting histogram data structure
-
-*******************************************************************************/
-CvHistogram generate_histogram(IplImage* src, bool graph, string outfilepath);
-
-/*******************************************************************************
-FUNCTION NAME:	pad_image()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Pads input image up to a specified size using a specified
-				grayscale value
-
-
-	INPUT:
-		src				- An image to be processed
-		new_width		- An int to specify the width of the output image
-		new_height		- An int to specify the height of the output image
-		color			- An int (between 0 and 255) to specify the grayscale
-						value to use when padding the image
-
-	OUTPUT:
-		return			- The resulting padded image
-
-*******************************************************************************/
-IplImage *pad_image(IplImage* src, int new_width, int new_height, int color);
 
 
 /*******************************************************************************
