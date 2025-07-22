@@ -601,9 +601,9 @@ DESCRIPTION:	Compute the log power spectrum of the DFT image.
 						Src and dst may be equal.
 
 *******************************************************************************/
-IplImage* log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage *dft_comb, IplImage *dft_dpy)
+void log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage *dft_comb, IplImage *dft_dpy, IplImage *dst)
 {
-   IplImage *dst = cvCreateImage(cvGetSize(src), src->depth, src->nChannels);
+//   IplImage *dst = cvCreateImage(cvGetSize(src), src->depth, src->nChannels);
    IplImage *dft_imgy, *dft_zero;
 
    /*   Prepare the real and empty imaginary planes */
@@ -646,7 +646,7 @@ IplImage* log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplI
 
    // Cleanup
    cvReleaseImage(&dft_imgy);
-   return dst;
+//   return dst;
 }
 
 /*******************************************************************************
@@ -693,19 +693,22 @@ DESCRIPTION:	Sums each of the rows in a given image and stores the sums in a
 *******************************************************************************/
 void sum_rows(const IplImage *const src, vector<double> &rowsums)
 {
-	CvMat *row = cvCreateMat(1, src->width, src->depth);
-	CvScalar sum;
-	int i, num_rows = src->height; 
-	
-	for (i = 0; i < num_rows; i++)
-	{
-		row = cvGetRow(src, row, i); /* top to bottom */
-		sum = cvSum(row);
-		rowsums[i] = sum.val[0];
-	}
+    int i, j, num_rows = src->height, num_cols = src->width;
+    int step = src->widthStep / sizeof(float); // Assuming 32-bit float
+    float* data = (float*)src->imageData;
 
-	// Cleanup
-	cvReleaseMat(&row);
+    for (i = 0; i < num_rows; i++)
+    {
+        double sum = 0.0;
+        float* row_ptr = data + i * step;
+
+        // Sum all pixels in the row
+        for (j = 0; j < num_cols; j++)
+        {
+            sum += row_ptr[j];
+        }
+        rowsums[i] = sum;
+    }
 }
 
 /*******************************************************************************
@@ -1183,8 +1186,11 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 	IplImage *dft_comb = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, 2);
 	IplImage *dft_real = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, 1);
    	IplImage *dft_dpy = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, 3);
-	log_power_spectrum(img_dfp, dft_real, dft_comb, dft_dpy);
-	IplImage *img_lps = log_power_spectrum(img_dfp, dft_real, dft_comb, dft_dpy);
+
+   	IplImage *img_lps = cvCreateImage(cvGetSize(img_dfp), img_dfp->depth, img_dfp->nChannels);
+
+    log_power_spectrum(img_dfp, dft_real, dft_comb, dft_dpy, img_lps);
+
 	if (textonly == 0)
 	{
 		//dump_image("Log Power Spectrum", img_lps, 0, verbose);
@@ -1204,17 +1210,18 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 
 	/* Reduce LogPolar to angles 0 - 180 */
 	IplImage *polar_trans_half = cvCreateImage(cvSize(polar_trans->width / 2 , polar_trans->height), polar_trans->depth, polar_trans->nChannels);
-	CvMat *polar_trans_half_mat = cvCreateMat(polar_trans->height, polar_trans->width / 2, polar_trans->depth); 
-	cvGetSubRect(polar_trans, polar_trans_half_mat, cvRect(0, 0, polar_trans->width / 2, polar_trans->height));
-	cvCopy(polar_trans_half_mat, polar_trans_half, NULL);
-	
+
+    // Instead of using cvCreateMat and cvGetSubRect, use cvSetImageROI and cvCopy
+    cvSetImageROI(polar_trans, cvRect(0, 0, polar_trans->width / 2, polar_trans->height));
+    cvCopy(polar_trans, polar_trans_half, NULL);
+    cvResetImageROI(polar_trans); // Important: reset ROI after operation
 
     /* Sum rows of polar transform (0 - 180) */
-	int num_rows = polar_trans_half->height;
-	vector<double> rowsums(num_rows);
-	cvFlip(polar_trans_half, polar_trans_half, 0);
-	sum_rows(polar_trans_half, rowsums);
-	
+    int num_rows = polar_trans_half->height;
+    vector<double> rowsums(num_rows);
+    cvFlip(polar_trans_half, polar_trans_half, 0);
+    sum_rows(polar_trans_half, rowsums);
+
 	/*	Smooth sums */
 	if (smoothscale > 1)
 		smooth_sums(rowsums, smoothscale); 
@@ -1310,10 +1317,16 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 	}
 
 	// Cleanup
-	// cvReleaseImage(&dft_dpy);
-	// cvReleaseImage(&dft_real);
-	// cvReleaseImage(&dft_comb);
-	
+    cvReleaseImage(&dft_dpy);
+	cvReleaseImage(&dft_real);
+	cvReleaseImage(&dft_comb);
+	cvReleaseImage(&img_lps);
+	cvReleaseImage(&img_dfp);
+	cvReleaseImage(&img_polar);
+	cvReleaseImage(&img);
+	cvReleaseImage(&polar_trans_half);
+	cvReleaseImage(&polar_trans);
+
 	return results;
 }
 

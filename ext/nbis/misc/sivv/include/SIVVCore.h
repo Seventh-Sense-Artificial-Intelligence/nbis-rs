@@ -262,7 +262,7 @@ DESCRIPTION:	Compute the log power spectrum of the DFT image.
 						Src and dst may be equal.
 
 *******************************************************************************/
-IplImage* log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage *dft_comb, IplImage *dft_dpy);
+void log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage *dft_comb, IplImage *dft_dpy, IplImage *dst);
 
 
 /*******************************************************************************
