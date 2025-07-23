@@ -87,8 +87,15 @@ of the software.
 
 *******************************************************************************/
 
-#ifndef _SIVVCORE_H
-#define _SIVVCORE_H
+#ifndef _SIVV__CORE_H
+#define _SIVV__CORE_H
+
+#include <vector>
+#include <string>
+#include <opencv2/core/types_c.h>
+
+using std::vector;
+using std::string;
 
 /* Peak-Valley-Pair (extrenum) data structure */
 struct extrenum {
@@ -300,23 +307,23 @@ DESCRIPTION:	Sums each of the rows in a given image and stores the sums in a
 *******************************************************************************/
 void sum_rows(const IplImage *const src, vector<double> &rowsums);
 
-/*******************************************************************************
-FUNCTION NAME:	sum_cols()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Sums each of the columns in a given image and stores the sums in
-				a given vector of doubles. 
-
-	INPUT:
-		src				- Points to an array structure containing the input data
-
-	OUTPUT:
-		rowsums  		- A vector of doubles containing the sum of each column
-						of the input image, stored in left-to-right order
-
-*******************************************************************************/
-void sum_cols(const IplImage *const src, vector<double> &colsums);
+///*******************************************************************************
+//FUNCTION NAME:	sum_cols()
+//
+//AUTHOR:			John D. Grantham
+//
+//DESCRIPTION:	Sums each of the columns in a given image and stores the sums in
+//				a given vector of doubles.
+//
+//	INPUT:
+//		src				- Points to an array structure containing the input data
+//
+//	OUTPUT:
+//		rowsums  		- A vector of doubles containing the sum of each column
+//						of the input image, stored in left-to-right order
+//
+//*******************************************************************************/
+//void sum_cols(const IplImage *const src, vector<double> &colsums);
 
 /*******************************************************************************
 FUNCTION NAME:	normalize_sums()
@@ -566,4 +573,4 @@ DESCRIPTION:	Provides a case-insensitive comparison of strings
 *******************************************************************************/
 bool caseInsensitiveStringCompare(const std::string& str1, const std::string& str2);
 
-#endif /* !_SIVVCORE_H */
+#endif /* !_SIVV__CORE_H */

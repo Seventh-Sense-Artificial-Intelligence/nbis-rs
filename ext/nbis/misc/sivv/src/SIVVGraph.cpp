@@ -65,9 +65,8 @@ using namespace std;
 // #include <opencv/highgui.h>
 
 /* SIVV includes */
-#include "SIVVCore.h"
-#include "SIVVGraph.h"
-
+#include "../include/SIVVCore.h"
+#include "../include/SIVVGraph.h"
 
 /*******************************************************************************
 FUNCTION NAME:	graph_sums()

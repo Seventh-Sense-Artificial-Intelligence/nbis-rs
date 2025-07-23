@@ -93,7 +93,7 @@ identified are necessarily the best available for the purpose.
 using namespace std;
 
 /* C includes */
-#include <stdio.h>
+#include <cstdio>
 
 /* OpenCV includes */
 #include <opencv2/core.hpp>
@@ -105,11 +105,13 @@ using namespace std;
 
 
 /* SIVV Includes */
-#include "SIVVCore.h"
-#include "SIVVGraph.h"
+//#include "SIVVCore.h"
+//#include "SIVVGraph.h"
+#include "../include/SIVVCore.h"
+#include "../include/SIVVGraph.h"
 
 /* PERFORMANCE MEASUREMENT INCLUDES */
-#include <time.h>
+//#include <ctime>
 
 
 /*******************************************************************************
@@ -201,7 +203,7 @@ void init_blackman_1d_filter(CvArr *arr, const double alpha)
    const double a1 = 1.0/2.0;
    const double a2 = alpha / 2.0;
    const double f = 2.0 * CV_PI / (cvGetSize(arr).width - 1.0);
-   double *const dptr = (double *const)cvPtr1D(arr, 0, NULL);
+   auto *const dptr = (double *const)cvPtr1D(arr, 0, nullptr);
    int n;
 
    if (1 != cvGetSize(arr).height) {
@@ -239,7 +241,7 @@ void init_tukey_1d_filter(CvArr *arr, const double alpha)
 	const double a1 = 0.5;
 	const double a2 = (2.0 * CV_PI / alpha);
 	const double a3 = (alpha / 2.0);
-	double *const dptr = (double *const)cvPtr1D(arr, 0, NULL);
+	auto *const dptr = (double *const)cvPtr1D(arr, 0, nullptr);
 	double x;
    int n;
 
@@ -303,7 +305,7 @@ void apply_tukey_window(const IplImage *const src, IplImage *const dst)
 
    tka = cvCreateImage(cvGetSize(src), src->depth, 1);
 
-   cvGEMM(ver, hor, 1.0, NULL, 0.0, tka, CV_GEMM_A_T);
+   cvGEMM(ver, hor, 1.0, nullptr, 0.0, tka, CV_GEMM_A_T);
 
 	// DEBUG
 	//dump_image("Window: Combined", tka, 0, 0);
@@ -347,7 +349,7 @@ void apply_blackman_window(const IplImage *const src, IplImage *const dst)
 
    bwa = cvCreateImage(cvGetSize(src), src->depth, 1);
 
-   cvGEMM(ver, hor, 1.0, NULL, 0.0, bwa, CV_GEMM_A_T);
+   cvGEMM(ver, hor, 1.0, nullptr, 0.0, bwa, CV_GEMM_A_T);
 
    cvMul(src, bwa, dst, 1.0);
 
@@ -403,11 +405,11 @@ void polar_transform(const IplImage *const src, IplImage *const dst, const int f
 	
 	
 	long circle = 100;
-	int channels;
+//	int channels;
 	
 	width     = src->width;
 	height    = src->height;
-	channels	= src->nChannels;
+//	channels	= src->nChannels;
 
     /* define x1 and x2 */
 	x1 = 0;
@@ -576,10 +578,10 @@ void diagonal_shuffle_quadrants(const CvArr *const src, CvArr *const dst)
 	cvReleaseMat(&tmp);
    } else {
       QUARTER(dst);
-      cvCopy(srcq[0], dstq[2], 0);
-      cvCopy(srcq[1], dstq[3], 0);
-      cvCopy(srcq[2], dstq[0], 0);
-      cvCopy(srcq[3], dstq[1], 0);
+      cvCopy(srcq[0], dstq[2], nullptr);
+      cvCopy(srcq[1], dstq[3], nullptr);
+      cvCopy(srcq[2], dstq[0], nullptr);
+      cvCopy(srcq[3], dstq[1], nullptr);
    }
 #undef Q
 #undef QUARTER
@@ -609,13 +611,13 @@ void log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage 
    /*   Prepare the real and empty imaginary planes */
    dft_imgy = cvCreateImage(cvGetSize(src), src->depth, 1);
    cvZero(dft_imgy);
-   cvMerge(src, dft_imgy, NULL, NULL, dft_comb);
+   cvMerge(src, dft_imgy, nullptr, nullptr, dft_comb);
 
    /* Perform the Discrete Fourier Transform */
    cvDFT(dft_comb, dft_comb, CV_DXT_FORWARD, 0);
 
    /* Separate the real and imgy planes in the result */
-   cvSplit(dft_comb, dft_real, dft_imgy, NULL, NULL);
+   cvSplit(dft_comb, dft_real, dft_imgy, nullptr, nullptr);
 
    /*   Combine real and imaginary planes, along with a plane of
         zeros, to produce a color image to display.  The default
@@ -623,22 +625,22 @@ void log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage 
    
    dft_zero = cvCreateImage(cvGetSize(src), src->depth, 1);
    cvZero(dft_zero);
-   cvMerge(dft_zero, dft_real, dft_imgy, NULL, dft_dpy);   
+   cvMerge(dft_zero, dft_real, dft_imgy, nullptr, dft_dpy);
 
    diagonal_shuffle_quadrants(dft_dpy, dft_dpy);
 
-   cvSplit(dft_dpy, dft_zero, dft_real, dft_imgy, NULL);
+   cvSplit(dft_dpy, dft_zero, dft_real, dft_imgy, nullptr);
    cvReleaseImage(&dft_zero);
 
    /* Compute the magnitude of the spectrum Mag = sqrt(Re^2 + Im^2) */
    cvPow(dft_real, dft_real, 2.0);
    cvPow(dft_imgy, dft_imgy, 2.0);
-   cvAdd(dft_real, dft_imgy, dft_real, NULL);
+   cvAdd(dft_real, dft_imgy, dft_real, nullptr);
    cvPow(dft_real, dft_real, 0.5);
 
    /* Compute cartesian log power spectrum */
-   cvCopy(dft_real, dft_imgy, NULL);
-   cvAddS(dft_imgy, cvScalarAll(1.0), dft_imgy, NULL);
+   cvCopy(dft_real, dft_imgy, nullptr);
+   cvAddS(dft_imgy, cvScalarAll(1.0), dft_imgy, nullptr);
    cvLog(dft_imgy, dft_imgy);
 
    /* Write results out to dst */
@@ -670,7 +672,7 @@ double findmax(const IplImage *const src)
 	/* double max = 0.0, val = 0.0; */
 	double min_val, max_val;
 	CvPoint min_loc, max_loc;
-	cvMinMaxLoc(src, &min_val, &max_val, &min_loc, &max_loc, NULL);
+	cvMinMaxLoc(src, &min_val, &max_val, &min_loc, &max_loc, nullptr);
 
 	return max_val;
 }
@@ -691,11 +693,29 @@ DESCRIPTION:	Sums each of the rows in a given image and stores the sums in a
 						the input image, stored in top-to-bottom order
 
 *******************************************************************************/
+//void sum_rows(const IplImage *const src, vector<double> &rowsums)
+//{
+//	CvMat *row = cvCreateMat(1, src->width, src->depth);
+//	CvScalar sum;
+//	int i, num_rows = src->height;
+//
+//	for (i = 0; i < num_rows; i++)
+//	{
+//		row = cvGetRow(src, row, i); /* top to bottom */
+//		sum = cvSum(row);
+//		rowsums[i] = sum.val[0];
+//		printf("rowsums[%d]: %f \n", i, static_cast<float>(rowsums[i]));
+//	}
+//
+//	// Cleanup
+//	cvReleaseMat(&row);
+//}
+
 void sum_rows(const IplImage *const src, vector<double> &rowsums)
 {
     int i, j, num_rows = src->height, num_cols = src->width;
     int step = src->widthStep / sizeof(float); // Assuming 32-bit float
-    float* data = (float*)src->imageData;
+    auto* data = (float*)src->imageData;
 
     for (i = 0; i < num_rows; i++)
     {
@@ -711,38 +731,38 @@ void sum_rows(const IplImage *const src, vector<double> &rowsums)
     }
 }
 
-/*******************************************************************************
-FUNCTION NAME:	sum_cols()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Sums each of the columns in a given image and stores the sums in
-				a given vector of doubles. 
-
-	INPUT:
-		src				- Points to an array structure containing the input data
-
-	OUTPUT:
-		rowsums  		- A vector of doubles containing the sum of each column
-						of the input image, stored in left-to-right order
-
-*******************************************************************************/
-void sum_cols(const IplImage *const src, vector<double> &colsums)
-{
-	CvMat *col = cvCreateMat(src->height, 1, src->depth);
-	CvScalar sum;
-	int i, num_cols = src->width; 
-	
-	for (i = 0; i < num_cols; i++)
-	{
-		col = cvGetCol(src, col, i); /* left-to-right */
-		sum = cvSum(col);
-		colsums[i] = sum.val[0];
-	}
-
-	// Cleanup
-	cvReleaseMat(&col);
-}
+///*******************************************************************************
+//FUNCTION NAME:	sum_cols()
+//
+//AUTHOR:			John D. Grantham
+//
+//DESCRIPTION:	Sums each of the columns in a given image and stores the sums in
+//				a given vector of doubles.
+//
+//	INPUT:
+//		src				- Points to an array structure containing the input data
+//
+//	OUTPUT:
+//		rowsums  		- A vector of doubles containing the sum of each column
+//						of the input image, stored in left-to-right order
+//
+//*******************************************************************************/
+//void sum_cols(const IplImage *const src, vector<double> &colsums)
+//{
+//	CvMat *col = cvCreateMat(src->height, 1, src->depth);
+//	CvScalar sum;
+//	int i, num_cols = src->width;
+//
+//	for (i = 0; i < num_cols; i++)
+//	{
+//		col = cvGetCol(src, col, i); /* left-to-right */
+//		sum = cvSum(col);
+//		colsums[i] = sum.val[0];
+//	}
+//
+//	// Cleanup
+//	cvReleaseMat(&col);
+//}
 
 /*******************************************************************************
 FUNCTION NAME:	normalize_sums()
@@ -1031,7 +1051,7 @@ void peak_finder(vector<extrenum> &peaks, vector<double> &rowsums, extrenum glob
 	/* Find Local Minimum and Maximum with min before max within step */
 	double min = global_minmax.min, max = global_minmax.max, lmin, lmax;
 	int i, j, lmin_loc = 0, lmax_loc = 0, num_rows = rowsums.size();
-	extrenum pvp;
+	extrenum pvp{};
 	
 	for (i = 0; i < (num_rows - step); i++)
 	{
@@ -1111,7 +1131,7 @@ DESCRIPTION:	Performs the entire standard SIVV process, described in NISTIR
 
 *******************************************************************************/
 //string sivv(IplImage *src, int window, int smoothscale, int verbose, int textonly, vector<double> *signal = 0, string graphfile = "", int *fail = NULL)
-string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<double> *signal = 0, string window = "", string graphfile = "", int *fail = NULL)
+string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<double> *signal = nullptr, string window = "", string graphfile = "", int *fail = nullptr)
 {
 	IplImage *img, *img_dfp, *img_polar, *polar_trans;
 	double grey_scale_factor;
@@ -1210,12 +1230,10 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 
 	/* Reduce LogPolar to angles 0 - 180 */
 	IplImage *polar_trans_half = cvCreateImage(cvSize(polar_trans->width / 2 , polar_trans->height), polar_trans->depth, polar_trans->nChannels);
-
-    // Instead of using cvCreateMat and cvGetSubRect, use cvSetImageROI and cvCopy
-    cvSetImageROI(polar_trans, cvRect(0, 0, polar_trans->width / 2, polar_trans->height));
-    cvCopy(polar_trans, polar_trans_half, NULL);
-    cvResetImageROI(polar_trans); // Important: reset ROI after operation
-
+	CvMat *polar_trans_half_mat = cvCreateMat(polar_trans->height, polar_trans->width / 2, polar_trans->depth); 
+	cvGetSubRect(polar_trans, polar_trans_half_mat, cvRect(0, 0, polar_trans->width / 2, polar_trans->height));
+	cvCopy(polar_trans_half_mat, polar_trans_half, nullptr);
+	
     /* Sum rows of polar transform (0 - 180) */
     int num_rows = polar_trans_half->height;
     vector<double> rowsums(num_rows);
@@ -1230,7 +1248,7 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 	normalize_sums(rowsums);
 
 	/* Find global min and max */
-	extrenum global_minmax;
+	extrenum global_minmax{};
 	find_global_minmax(rowsums, global_minmax);
 
 	if (verbose != 0)
@@ -1244,7 +1262,7 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 
 	/* Process peaks */
 	double maxdiff = 0.0, diff = 0.0;
-	extrenum largestpvp;
+	extrenum largestpvp{};
 	int lpvp_peaknum = 0;
 
 	for (int i = 0; i < (int)peaks.size(); i++)
@@ -1273,7 +1291,7 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 	double peak_freq = 0;
 	int num_peaks = 0;
 
-	if (peaks.size() > 0)
+	if (!peaks.empty())
 	{
 		num_peaks = peaks.size();
 		dx = (largestpvp.max_loc - largestpvp.min_loc) * cpp_scale;
@@ -1300,7 +1318,7 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 	results = out.str();
 
 	/* Graph */
-	if (textonly == 0 || graphfile != "")
+	if (textonly == 0 || !graphfile.empty())
 	{
 		IplImage *graph = cvCreateImage(cvSize(500, 500), IPL_DEPTH_32F, 3);
 		
@@ -1311,21 +1329,22 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 		// 	cvSaveImage(graphfile.c_str(), graph);
 	}
 
-	if (signal != 0)
+	if (signal != nullptr)
 	{
 		*signal = rowsums;
 	}
 
 	// Cleanup
-    cvReleaseImage(&dft_dpy);
-	cvReleaseImage(&dft_real);
-	cvReleaseImage(&dft_comb);
-	cvReleaseImage(&img_lps);
-	cvReleaseImage(&img_dfp);
-	cvReleaseImage(&img_polar);
-	cvReleaseImage(&img);
-	cvReleaseImage(&polar_trans_half);
-	cvReleaseImage(&polar_trans);
+    if (dft_dpy) cvReleaseImage(&dft_dpy);
+    if (dft_real) cvReleaseImage(&dft_real);
+    if (dft_comb) cvReleaseImage(&dft_comb);
+    if (img_lps) cvReleaseImage(&img_lps);
+    if (img_dfp) cvReleaseImage(&img_dfp);
+    if (img_polar) cvReleaseImage(&img_polar);
+    if (img) cvReleaseImage(&img);
+    if (polar_trans_half) cvReleaseImage(&polar_trans_half);
+    if (polar_trans) cvReleaseImage(&polar_trans);
+    if (polar_trans_half_mat) cvReleaseMat(&polar_trans_half_mat);
 
 	return results;
 }
@@ -1334,11 +1353,12 @@ string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<do
 string sivv(IplImage *src)
 {
 	int fail = 0;
-	string results = sivv(src, 7, 0, 1, NULL, "blackman", "", &fail); /* primary default values */
-	
+	string results = sivv(src, 7, 0, 1, nullptr, "blackman", "", &fail); /* primary default values */
+//	string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<double> *signal = 0, string window = "", string graphfile = "", int *fail = NULL)
+
 	if (fail == 1)
 	{
-		results = sivv(src, 7, 0, 1, NULL, "tukey", "", &fail); /* secondary default values */
+		results = sivv(src, 7, 0, 1, nullptr, "tukey", "", &fail); /* secondary default values */
 	}
 
 	return results;
@@ -1706,7 +1726,7 @@ CvPoint find_fingerprint_center_morph(IplImage* src, int *xbound_min, int *xboun
   	//IplImage bwimg = cvmatClosedOutputImg;
 
 	//alternate "moments" method
-	CvMoments *moments = (CvMoments*)malloc(sizeof(CvMoments));
+	auto *moments = (CvMoments*)malloc(sizeof(CvMoments));
 	cvMoments(&bwimg, moments);
 
 	double moment10 = cvGetSpatialMoment(moments, 1, 0);
@@ -1716,8 +1736,8 @@ CvPoint find_fingerprint_center_morph(IplImage* src, int *xbound_min, int *xboun
 	static int posX = 0;
     static int posY = 0;
  
-    int lastX = posX;
-    int lastY = posY;
+//    int lastX = posX;
+//    int lastY = posY;
  
     posX = moment10/area;
     posY = moment01/area;
