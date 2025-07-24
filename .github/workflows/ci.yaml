@@ -53,12 +53,6 @@ jobs:
     - name: Check wheel integrity
       run: twine check dist/*
 
-    - name: Upload wheel as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ runner.os }}-wheel
-        path: dist/*.whl
-
   test-python-bindings:
     name: Run Pytest on Python Wheel
     runs-on: ubuntu-latest
@@ -90,3 +84,9 @@ jobs:
         source .venv/bin/activate
         cd bindings/python/tests
         pytest -v
+    
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/*.whl
