@@ -20,44 +20,44 @@ jobs:
     - name: Run tests
       run: cargo test --release --all
 
-  # build-python-bindings:
-  #   name: Build Python Wheel (${{ matrix.os }})
-  #   runs-on: ${{ matrix.os }}
-  #   strategy:
-  #     matrix:
-  #       os: [ubuntu-latest, macos-latest]
+  build-python-bindings:
+    name: Build Python Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [self-hosted, macos-latest]
 
-  #   steps:
-  #   - uses: actions/checkout@v4
+    steps:
+    - uses: actions/checkout@v4
 
-  #   - name: Install Rust
-  #     uses: actions-rs/toolchain@v1
-  #     with:
-  #       toolchain: stable
-  #       override: true
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
 
-  #   - name: Install Python + maturin
-  #     uses: actions/setup-python@v5
-  #     with:
-  #       python-version: '3.10'
+    - name: Install Python + maturin
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
 
-  #   - name: Install maturin
-  #     run: pip install maturin twine
+    - name: Install maturin
+      run: pip install maturin twine
 
-  #   - name: Build wheel
-  #     run: maturin build --release --manifest-path Cargo.toml --out dist
+    - name: Build wheel
+      run: maturin build --release --manifest-path Cargo.toml --out dist
 
-  #   - name: Patch wheel
-  #     run: ./patch_maturin_wheel.sh
+    - name: Patch wheel
+      run: ./patch_maturin_wheel.sh
 
-  #   - name: Check wheel integrity
-  #     run: twine check dist/*
+    - name: Check wheel integrity
+      run: twine check dist/*
 
-  #   - name: Upload wheel as artifact
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #           name: ${{ runner.os }}-wheel
-  #           path: dist/*.whl
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+            name: ${{ runner.os }}-wheel
+            path: dist/*.whl
 
   # upload-to-pypi:
   #   name: Upload All Wheels to PyPI
