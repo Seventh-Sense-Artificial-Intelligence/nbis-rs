@@ -9,9 +9,26 @@ First generate the python wheels by running the following command in the root di
 
 This will create a virtual environment `.venv` and the python wheel in the `dist` folder.
 
-Now, in the root directory, activate the virtual environment and install the wheel:
+Next, in the root directory, activate the virtual environment and install the wheel. Modify the wheel name if necessary:
 
 ```bash
 source ./.venv/bin/activate
-pip install ./dist/nbis_py-0.1.2-py3-none-manylinux_2_31_x86_64.whl
+pip install ./dist/nbis_py-0.1.2-py3-none-manylinux_2_34_x86_64.whl
+```
+
+Next, change the directory to the test folder:
+```bash
+cd bindings/python/tests
+```
+
+### Run the pytests
+
+Install the pytest and other dependencies as:
+```bash
+pip install -r requirements.txt
+```
+
+And run the test:
+```bash
+pytest test_nbis.py 
 ```
