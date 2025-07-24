@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Create dist folder if it doesn't exist
+mkdir -p dist
+
 # Set path to jniLibs target dir
 JNILIBS_DIR="bindings/android/app/src/main/jniLibs"
 
@@ -57,16 +60,16 @@ cargo build --release
 cargo run --bin uniffi-bindgen generate \
           --library "target/release/libnbis.${LIB_EXT}" \
           --language kotlin \
-          --out-dir bindings/android/app/src/main/java/com/sensecrypt/sdk/nbis
+          --out-dir bindings/android/app/src/main/java/ai/seventhsense/sdk/nbis
 
 # Move to sensible folder without uniffi opinionation
-mv bindings/android/app/src/main/java/com/sensecrypt/sdk/nbis/uniffi/nbis/nbis.kt \
-    bindings/android/app/src/main/java/com/sensecrypt/sdk/nbis.kt
-rm -rf bindings/android/app/src/main/java/com/sensecrypt/sdk/nbis
+mv bindings/android/app/src/main/java/ai/seventhsense/sdk/nbis/uniffi/nbis/nbis.kt \
+    bindings/android/app/src/main/java/ai/seventhsense/sdk/nbis.kt
+rm -rf bindings/android/app/src/main/java/ai/seventhsense/sdk/nbis
 
 
 # Root directory of generated Kotlin files
-TARGET_DIR="bindings/android/app/src/main/java/com/sensecrypt/sdk"
+TARGET_DIR="bindings/android/app/src/main/java/ai/seventhsense/sdk"
 
 # Old and new package names
 OLD_PACKAGE="package uniffi.nbis"

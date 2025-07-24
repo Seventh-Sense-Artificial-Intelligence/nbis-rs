@@ -1,4 +1,4 @@
-package com.sensecrypt.sdk.nbis
+package ai.seventhsense.sdk.nbis
 
 import org.junit.Test
 

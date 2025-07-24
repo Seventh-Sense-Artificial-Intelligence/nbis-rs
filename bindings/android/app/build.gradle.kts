@@ -3,11 +3,11 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-group = "com.sensecrypt.sdk"
+group = "ai.seventhsense.sdk"
 version = "1.0.0"
 
 android {
-    namespace = "com.sensecrypt.sdk.nbis"
+    namespace = "ai.seventhsense.sdk.nbis"
     compileSdk = 34
 
     defaultConfig {
