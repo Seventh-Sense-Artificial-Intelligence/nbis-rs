@@ -48,6 +48,7 @@ of the software.
 
 	AUTHORS:	Joseph C. Konczal 
 				John D. Grantham
+				Modified by Jiong Zhang (Seventh Sense AI) for C++ compatibility
 	
 	DATE:		01/05/2009 (JCK)
 	UPDATED:	01/19/2009 (JDG)
@@ -60,35 +61,10 @@ of the software.
 		Contains the core set of functions necessary for the processing images
 		using the SIVV method (as described in NISTIR 7599). 
 
-********************************************************************************
-	FUNCTIONS:
-					FUNCTION NAME							(Author's initials)
+********************************************************************************/
 
-					dump_image()							(JCK)
-					init_blackman_1d_filter()				(JCK)
-					apply_blackman_window()					(JCK)
-					diagonal_shuffle_quadrants()			(JCK)
-					polar_transform()						(JDG)
-					log_power_spectrum()					(JCK/JDG)
-					findmax()								(JDG)
-					sum_rows()								(JDG)
-					sum_cols()								(JDG)
-					smooth_sums()							(JDG)
-					find_global_minmax()					(JDG)
-					normalize_sums()						(JDG)
-					find_fingerprint_center()				(JDG)
-					cvp_distance()							(JDG)
-					crop_image()							(JDG)
-					peak_finder()							(JDG)
-					sivv()									(JDG)
-					lps()									(JDG)
-					generate_histogram()					(JDG)
-					pad_image()								(JDG)
-
-*******************************************************************************/
-
-#ifndef _SIVV__CORE_H
-#define _SIVV__CORE_H
+#ifndef BNIS_SIVV_CORE_H
+#define BNIS_SIVV_CORE_H
 
 #include <vector>
 #include <string>
@@ -102,7 +78,6 @@ struct extrenum {
 	double min, max;
 	int min_loc, max_loc;
 };
-
 
 /*******************************************************************************
 FUNCTION NAME:	dump_image()
@@ -123,394 +98,7 @@ DESCRIPTION:	Print image characteristics on stdout and create an
 		name			- An image window containing the given image (img)
 
 *******************************************************************************/
-//void dump_image(const char *const name, IplImage *const img, int autosize, int verbose);
-
-
-/*******************************************************************************
-FUNCTION NAME:	init_blackman_1d_filter()
-
-AUTHOR:			Joseph C. Konczal
-
-DESCRIPTION:	Create an 1D Blackman filter of the specified size, using the 
-				specified alpha, typically 0.16, and store it in the provided 
-				space.
-
-	INPUT:
-		arr				- 1D array of double precision floating point values.  
-						The size of which determines the size of the filter that
-						will be created.
-		alpha			- The Blackman alpha parameter.
-
-	OUTPUT:
-		arr				-  The filter values, 0.0 to 1.0, are depositied in 
-						this array.
-
-*******************************************************************************/
-void init_blackman_1d_filter(CvArr *arr, const double alpha);
-
-/*******************************************************************************
-FUNCTION NAME:	init_tukey_1d_filter()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Create an 1D Tukey filter of the specified size, using the 
-				specified alpha, typically 0.25, and store it in the provided 
-				space.
-
-	INPUT:
-		arr				- 1D array of double precision floating point values.  
-						The size of which determines the size of the filter that
-						will be created.
-		alpha			- The alpha parameter.
-
-	OUTPUT:
-		arr				-  The filter values, 0.0 to 1.0, are depositied in 
-						this array.
-
-*******************************************************************************/
-void init_tukey_1d_filter(CvArr *arr, const double alpha);
-
-/*******************************************************************************
-FUNCTION NAME:	apply_tukey_window()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Create an appropriately sized 2D Tukey window, and apply 
-				it to the image.
-
-	INPUT:
-		src				- Points to an allocated image structure containing the
-						input image.
-
-	OUTPUT:
-		dst				- Points to allocated image structure of the same size 
-						and type as the input (src) to receive the filtered 
-						result. Src and dst may be equal.
-
-*******************************************************************************/
-void apply_tukey_window(const IplImage *const src, IplImage *const dst);
-
-
-/*******************************************************************************
-FUNCTION NAME:	apply_blackman_window()
-
-AUTHOR:			Joseph C. Konczal
-
-DESCRIPTION:	Create an appropriately sized 2D Blackman window, and apply 
-				it to the image.
-
-	INPUT:
-		src				- Points to an allocated image structure containing the
-						input image.
-
-	OUTPUT:
-		dst				- Points to allocated image structure of the same size 
-						and type as the input (src) to receive the filtered 
-						result. Src and dst may be equal.
-
-*******************************************************************************/
-void apply_blackman_window(const IplImage *const src, IplImage *const dst);
-
-/*******************************************************************************
-FUNCTION NAME:	polar_transform()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Performs a polar transformation to the input array (src) and
-				writes the result into the output array (dst). Both arrays must 
-				be two dimentional and the values must be 32-bit floating point. 
-
-	INPUT:
-		src				- Points to an array structure containing the 2D, 
-						32-bit floating point input data.
-		flags			- OpenCV Interpolation flag (ex: CV_INTER_CUBIC), 
-						determines the type of interpolation used in remapping 
-
-	OUTPUT:
-		dst				- Points to allocated array structure of the same size
-						and type as the input (src) to receive the transformed 
-						result. Src and dst may not be equal.
-
-*******************************************************************************/
-void polar_transform(const IplImage *const src, IplImage *const dst, const int flags);
-
-/*******************************************************************************
-FUNCTION NAME:	diagonal_shuffle_quadrants()
-
-AUTHOR:			Joseph C. Konczal
-
-DESCRIPTION:	Rearrange the quadrants of a 2D array by swapping them 
-				diagonally.
-
-	INPUT:
-		src				- Points to an array structure containing the input data
-
-	OUTPUT:
-		dst				- Points to allocated structure of the same size and
-						type as the input (src) to receive the shuffled result.
-						Src and dst may be equal.
-
-*******************************************************************************/
-void diagonal_shuffle_quadrants(const CvArr *const src, CvArr *const dst);
-
-/*******************************************************************************
-FUNCTION NAME:	log_power_spectrum()
-
-AUTHORS:		Joseph C. Konczal and John D. Grantham
-
-DESCRIPTION:	Compute the log power spectrum of the DFT image. 
-
-	INPUT:
-		src				- Points to an array structure containing the input data
-
-	OUTPUT:
-		dst				- Points to allocated structure of the same size and
-						type as the input (src) to receive the transformed result.
-						Src and dst may be equal.
-
-*******************************************************************************/
-void log_power_spectrum(const IplImage *const src, IplImage *dft_real, IplImage *dft_comb, IplImage *dft_dpy, IplImage *dst);
-
-
-/*******************************************************************************
-FUNCTION NAME:	findmax()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Finds and returns the maximum value of an image. 
-
-	INPUT:
-		src				- Points to an array structure containing the input data
-
-	OUTPUT:
-		return  		- A double containing the maximum value found in the 
-						input image.
-
-*******************************************************************************/
-double findmax(const IplImage *const src);
-
-/*******************************************************************************
-FUNCTION NAME:	sum_rows()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Sums each of the rows in a given image and stores the sums in a
-				given vector of doubles. 
-
-	INPUT:
-		src				- Points to an array structure containing the input data
-
-	OUTPUT:
-		rowsums  		- A vector of doubles containing the sum of each row of
-						the input image, stored in top-to-bottom order
-
-*******************************************************************************/
-void sum_rows(const IplImage *const src, vector<double> &rowsums);
-
-///*******************************************************************************
-//FUNCTION NAME:	sum_cols()
-//
-//AUTHOR:			John D. Grantham
-//
-//DESCRIPTION:	Sums each of the columns in a given image and stores the sums in
-//				a given vector of doubles.
-//
-//	INPUT:
-//		src				- Points to an array structure containing the input data
-//
-//	OUTPUT:
-//		rowsums  		- A vector of doubles containing the sum of each column
-//						of the input image, stored in left-to-right order
-//
-//*******************************************************************************/
-//void sum_cols(const IplImage *const src, vector<double> &colsums);
-
-/*******************************************************************************
-FUNCTION NAME:	normalize_sums()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Normalizes the sums stored in a vector to the 0th term 
-
-	INPUT:
-		sums			- A vector of doubles containing sums to be normalized
-
-	OUTPUT:
-		sums  			- A vector of doubles, normalized to the 0th value
-
-*******************************************************************************/
-void normalize_sums(vector<double> &sums);
-
-
-/*******************************************************************************
-FUNCTION NAME:	smooth_sums()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Smooths the signal using an n-point moving average filter, where 
-				n is an odd number greater than 1 (if given an even number, the
-				function will choose an odd number 1 lower than the given value).
-				The filtering algorithm performs zero-phase digital filtering by
-				processing the input data in both forward and reverse directions
-				as described in NISTIR 7599.
-
-
-	INPUT:
-		rowsums			- A vector of doubles containing sums which represent 
-						the spectrum/signal to be smoothed
-		numpoints		- The number of points over which to the signal will be
-						smoothed (higher values mean more smoothing)
-
-	OUTPUT:
-		rowsums  			- A vector of doubles, smoothed by n points
-
-*******************************************************************************/
-void smooth_sums(vector<double> &rowsums, int num_points);
-
-/*******************************************************************************
-FUNCTION NAME:	find_global_minmax()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Finds the global minimum and maximum of a given vector of 
-				doubles, and stores the values (along with their locations) in 
-				a given extrenum structure.
-
-
-	INPUT:
-		rowsums			- A vector of doubles containing sums 
-		global_minmax	- The extrenum structure in which to store the global
-						minimum and maximum points found in the vector of sums
-
-	OUTPUT:
-		global_minmax	- An extrenum structure containing the global minimum
-						and maximum values, along with their locations (points)
-
-*******************************************************************************/
-void find_global_minmax(vector<double> &rowsums, extrenum &global_minmax);
-
-/*******************************************************************************
-FUNCTION NAME:	find_fingerprint_center()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Finds the center of the area of highest density of dark pixels in
-				an image, with the assumption that if the image contains a 
-				fingerprint, this point will also be the center of the fingerprint 
-
-	INPUT:
-		src				- An image to be processed
-		xbound_min		- A pointer to a location in which to store the
-						minimum x-value bounding the area of highest edge
-						density (if found)
-		xbound_max		- A pointer to a location in which to store the
-						maximum x-value bounding the area of highest edge
-						density (if found)
-		ybound_min		- A pointer to a location in which to store the
-						minimum y-value bounding the area of highest edge
-						density (if found)
-		ybound_max		- A pointer to a location in which to store the
-						maximum y-value bounding the area of highest edge
-						density (if found)
-
-	OUTPUT:
-		xbound_min		- The minimum x-value bounding the area of highest 
-						edge density (if found)
-		xbound_max		- The maximum x-value bounding the area of highest 
-						edge density (if found)
-		ybound_min		- The minimum y-value bounding the area of highest 
-						edge density (if found)
-		ybound_max		- The maximum y-value bounding the area of highest 
-						edge density (if found)
-
-*******************************************************************************/
-CvPoint find_fingerprint_center(IplImage* src, int *xbound_min, int *xbound_max, int *ybound_min, int *ybound_max);
-
-/*******************************************************************************
-FUNCTION NAME:	find_fingerprint_center_morph()
-
-AUTHOR:			John D. Grantham 
-				(with credit to Bruce Bandini for his morphology code)
-
-DESCRIPTION:	Finds the center of the area of the center of a potential 
-				fingerprint, based on several morphology operations
-
-
-	INPUT:
-		src				- An image to be processed
-		xbound_min		- A pointer to a location in which to store the
-						minimum x-value bounding the area of highest edge
-						density (if found)
-		xbound_max		- A pointer to a location in which to store the
-						maximum x-value bounding the area of highest edge
-						density (if found)
-		ybound_min		- A pointer to a location in which to store the
-						minimum y-value bounding the area of highest edge
-						density (if found)
-		ybound_max		- A pointer to a location in which to store the
-						maximum y-value bounding the area of highest edge
-						density (if found)
-
-	OUTPUT:
-		xbound_min		- The minimum x-value bounding the area of highest 
-						edge density (if found)
-		xbound_max		- The maximum x-value bounding the area of highest 
-						edge density (if found)
-		ybound_min		- The minimum y-value bounding the area of highest 
-						edge density (if found)
-		ybound_max		- The maximum y-value bounding the area of highest 
-						edge density (if found)
-
-*******************************************************************************/
-CvPoint find_fingerprint_center_morph(IplImage* src, int *xbound_min, int *xbound_max, int *ybound_min, int *ybound_max);
-
-
-/*******************************************************************************
-FUNCTION NAME:	cvp_distance()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Calculates and returns the distance between two points
-
-
-	INPUT:
-		a				- A CvPoint (origin)
-		b				- Another CvPoint (destination)
-
-	OUTPUT:
-		return			- The distance between the two given CvPoints (from
-						origin to destination)
-
-*******************************************************************************/
-double cvp_distance(const CvPoint a, const CvPoint b);
-
-/*******************************************************************************
-FUNCTION NAME:	peak_finder()
-
-AUTHOR:			John D. Grantham
-
-DESCRIPTION:	Finds peak-valley-pairs (PVP's) within a given signal above the 
-				given peak size threshold and within a specified distance 
-				between the	valley and peak
-
-
-	INPUT:
-		peaks			- A vector in which to store any PVP's found
-		rowsums			- A vector containing the signal to be processed
-		global_minmax	- An extrenum structure containing the global minimum
-						and maximum values of the signal
-		peak_threshold	- The given peak size threshold (the minimum relative
-						size of peaks to be found in the signal)
-		step			- The maximum distance allowable between a peak and 
-						its preceeding valley
-
-	OUTPUT:
-		peaks			- A vector containing any PVP's found (within step and
-						above peak_threshold)
-
-*******************************************************************************/
-void peak_finder(vector<extrenum> &peaks, vector<double> &rowsums, extrenum global_minmax, double peak_threshold, int step);
-
+// Modern C++ version using cv::Mat
 /*******************************************************************************
 FUNCTION NAME:	sivv()
 
@@ -547,12 +135,9 @@ DESCRIPTION:	Performs the entire standard SIVV process, described in NISTIR
 
 
 *******************************************************************************/
-//string sivv(IplImage *src, int window, int smoothscale, int verbose, int textonly, vector<double> *signal, string graphfile, int *fail);
-string sivv(IplImage *src, int smoothscale, int verbose, int textonly, vector<double> *signal, string window, string graphfile, int *fail);
 
 /* SIVV Function Overload for quick use with default values */
-string sivv(IplImage *src);
-
+string sivv(const cv::Mat &src);
 
 /*******************************************************************************
 FUNCTION NAME:	caseInsensitiveStringCompare
@@ -573,4 +158,6 @@ DESCRIPTION:	Provides a case-insensitive comparison of strings
 *******************************************************************************/
 bool caseInsensitiveStringCompare(const std::string& str1, const std::string& str2);
 
-#endif /* !_SIVV__CORE_H */
+cv::Point2i find_fingerprint_center_morph(const cv::Mat& src, int* xbound_min, int* xbound_max, int* ybound_min, int* ybound_max);
+
+#endif /* !BNIS_SIVV_CORE_H */

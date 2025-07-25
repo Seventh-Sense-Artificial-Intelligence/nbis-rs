@@ -182,7 +182,6 @@ fn main() {
     cc::Build::new()
         .cpp(true)
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
-        .file("ext/nbis/misc/sivv/src/SIVVGraph.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
         .include(dst.join("include/opencv4"))

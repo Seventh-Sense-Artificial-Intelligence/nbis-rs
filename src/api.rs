@@ -12,9 +12,7 @@ use imageproc::rect::Rect;
 use crate::consts::MM_PER_INCH;
 use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
-use crate::ffi::{
-    comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts, dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2, sivv_ffi_free_bytes, sivv_ffi_from_bytes, znorm_fniq_featvctr, LFSPARMS, MINUTIAE, MIN_MINUTIAE, NFIQ_NUM_CLASSES, NFIQ_VCTRLEN
-};
+use crate::ffi::{comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts, dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2, sivv_ffi_free_bytes, sivv_ffi_from_bytes, znorm_fniq_featvctr, CPoint2i, LFSPARMS, MINUTIAE, MIN_MINUTIAE, NFIQ_NUM_CLASSES, NFIQ_VCTRLEN};
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
 
@@ -106,6 +104,36 @@ fn is_fingerprint(result: &SIVVResult) -> bool {
     result.peak_frequency < max_peak_freq && result.power_diff > peak_height_threshold
 }
 
+// Safe Rust wrapper
+pub fn find_fingerprint_center(
+    data: *const u8,
+    width: c_int,
+    height: c_int,
+) -> Result<(CPoint2i, (i32, i32, i32, i32)), Box<dyn std::error::Error>> {
+    let mut xbound_min: c_int = 0;
+    let mut xbound_max: c_int = 0;
+    let mut ybound_min: c_int = width;
+    let mut ybound_max: c_int = height;
+
+    // Call the C function
+    let result = unsafe {
+        crate::ffi::find_fingerprint_center_morph_c(
+            data,
+            width,
+            height,
+            &mut xbound_min,
+            &mut xbound_max,
+            &mut ybound_min,
+            &mut ybound_max,
+        )
+    };
+
+    // let point = opencv::core::Point2i::new(result.x, result.y);
+    let bounds = (xbound_min, xbound_max, ybound_min, ybound_max);
+
+    Ok((result, bounds))
+}
+
 fn sivv(image: *mut c_uchar, width: i32, height: i32) -> Result<SIVVResult, NbisError> {
     unsafe {
         let ptr = sivv_ffi_from_bytes(
@@ -166,6 +194,12 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
         _ => image.to_luma8(),
     };
     let (iw, ih) = gray.dimensions();
+
+    //get the finger print center
+    let center = find_fingerprint_center(gray.as_ptr() as *mut c_uchar, iw as c_int, ih as c_int)
+        .map_err(|e| NbisError::GenericError(e.to_string()))?;
+    println!("Fingerprint center: x:{:?}, y:{:?}, bbox, x1:{:?}, x2:{:?}, y1:{:?}, y2:{:?} ", center.0.x, center.0.y,
+             center.1.0, center.1.1, center.1.2, center.1.3 );
 
     // 2) Check SIVV result -----------------------------------
     let sivv_result = sivv(gray.as_ptr() as *mut c_uchar, iw as i32, ih as i32)?;

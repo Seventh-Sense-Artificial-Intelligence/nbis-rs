@@ -294,3 +294,21 @@ extern "C" {
     ) -> *mut c_char;
     pub(crate) fn sivv_ffi_free_bytes(ptr: *mut c_char);
 }
+
+#[repr(C)]
+pub struct CPoint2i {
+    pub x: c_int,
+    pub y: c_int,
+}
+
+extern "C" {
+    pub(crate) fn find_fingerprint_center_morph_c(
+        data: *const u8,
+        width: c_int,
+        height: c_int,
+        xbound_min: *mut c_int,
+        xbound_max: *mut c_int,
+        ybound_min: *mut c_int,
+        ybound_max: *mut c_int,
+    ) -> CPoint2i;
+}
