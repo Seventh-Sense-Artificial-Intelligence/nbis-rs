@@ -101,4 +101,6 @@ if [ -z "$AAR_FILE" ]; then
   echo "❌ No AAR file found"
   exit 1
 fi
+
+mkdir -p ../../dist
 mv "$AAR_FILE" "../../dist/nbis-sdk.aar"

@@ -2,3 +2,5 @@
 **/.DS_Store
 dist/
 *.pyc
+.venv/ 
+.pytest_cache/
