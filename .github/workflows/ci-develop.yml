@@ -1,0 +1,116 @@
+name: nbis build develop
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+env:
+  ANDROID_NDK_HOME: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
+  ANDROID_NDK_ROOT: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
+  ANDROID_SDK_ROOT: /home/ubuntu/Android/Sdk
+  
+jobs:
+  build-and-test:
+    runs-on: Linux
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
+    - name: Run rust cargo tests
+      run: cargo test --release --all
+
+  build-python-bindings:
+    name: Build Python Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [Linux, macOS]
+    needs: [build-and-test]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Build wheel
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install maturin
+        maturin build --release --manifest-path Cargo.toml --out dist
+
+    - name: Patch wheel
+      run: ./patch_maturin_wheel.sh
+
+    - name: Check wheel integrity
+      run: |
+        source .nbis-venv/bin/activate
+        pip install twine
+        twine check dist/*
+
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+            name: ${{ runner.os }}-wheel
+            path: dist/*.whl
+
+  test-python-bindings:
+    name: Run Pytest on Python Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [Linux, macOS]
+    needs: [build-python-bindings]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download built wheel
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/
+
+    - name: Install wheel and test dependencies
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install dist/*.whl
+        pip install -r bindings/python/tests/requirements.txt
+
+    - name: Run pytest
+      run: |
+        source .nbis-venv/bin/activate
+        cd bindings/python/tests
+        pytest -v
+    
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/*.whl
+        overwrite: true
+
+  build-android-bindings:
+    name: Build android aar file
+    runs-on: Linux
+    needs: [build-and-test]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Update PATH
+      run: echo "/home/ubuntu/Android/Sdk/platform-tools" >> $GITHUB_PATH
+
+    - name: Build android aar file
+      run: ./build_android.sh
+

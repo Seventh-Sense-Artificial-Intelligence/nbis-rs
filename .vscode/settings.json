@@ -62,4 +62,12 @@
         "vector": "cpp",
         "algorithm": "cpp"
     }
+
+    // for Linux:
+    "terminal.integrated.env.linux": {
+        "ANDROID_SDK_ROOT": "/home/coder/android-sdk",
+        "ANDROID_NDK_HOME": "/home/coder/android-sdk/ndk/26.1.10909125",
+        "ANDROID_NDK_ROOT": "/home/coder/android-sdk/ndk/26.1.10909125",
+        "PATH": "${env:PATH}:/home/coder/android-sdk/platform-tools"
+    },
 }
