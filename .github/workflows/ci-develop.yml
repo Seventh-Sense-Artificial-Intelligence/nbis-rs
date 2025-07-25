@@ -13,16 +13,13 @@ env:
   
 jobs:
   build-and-test:
-    runs-on: self-hosted
+    runs-on: Linux
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-    - name: Run tests
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
+    - name: Run rust cargo tests
       run: cargo test --release --all
 
   build-python-bindings:
@@ -30,33 +27,31 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [self-hosted, macos-latest]
+        os: [Linux, macOS]
+    needs: [build-and-test]
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-
-    - name: Install Python + maturin
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-
-    - name: Install maturin
-      run: pip install maturin twine
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
     - name: Build wheel
-      run: maturin build --release --manifest-path Cargo.toml --out dist
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install maturin
+        maturin build --release --manifest-path Cargo.toml --out dist
 
     - name: Patch wheel
       run: ./patch_maturin_wheel.sh
 
     - name: Check wheel integrity
-      run: twine check dist/*
+      run: |
+        source .nbis-venv/bin/activate
+        pip install twine
+        twine check dist/*
 
     - name: Upload wheel as artifact
       uses: actions/upload-artifact@v4
@@ -64,18 +59,54 @@ jobs:
             name: ${{ runner.os }}-wheel
             path: dist/*.whl
 
+  test-python-bindings:
+    name: Run Pytest on Python Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [Linux, macOS]
+    needs: [build-python-bindings]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download built wheel
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/
+
+    - name: Install wheel and test dependencies
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install dist/*.whl
+        pip install -r bindings/python/tests/requirements.txt
+
+    - name: Run pytest
+      run: |
+        source .nbis-venv/bin/activate
+        cd bindings/python/tests
+        pytest -v
+    
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/*.whl
+        overwrite: true
+
   build-android-bindings:
     name: Build android aar file
-    runs-on: self-hosted
+    runs-on: Linux
+    needs: [build-and-test]
     
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
     - name: Update PATH
       run: echo "/home/ubuntu/Android/Sdk/platform-tools" >> $GITHUB_PATH
