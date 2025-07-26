@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
-use crate::api::NfiqResult;
+use crate::api::{NfiqResult, ROI};
 use crate::minutia::Minutia;
 use crate::{bozorth::bz_match_score, encoding::to_nist_xyt_set};
 /// A set of minutiae extracted from a fingerprint image.
@@ -11,15 +11,23 @@ pub struct Minutiae {
     pub(crate) img_w: u32, // original image width for XYT conversion
     pub(crate) img_h: u32, // original image height for XYT conversion
     pub(crate) nfiq: NfiqResult,
+    pub(crate) roi: Option<ROI>,
 }
 
 impl Minutiae {
-    pub(crate) fn new(minutiae: Vec<Minutia>, img_w: u32, img_h: u32, nfiq: NfiqResult) -> Self {
+    pub(crate) fn new(
+        minutiae: Vec<Minutia>,
+        img_w: u32,
+        img_h: u32,
+        nfiq: NfiqResult,
+        roi: Option<ROI>,
+    ) -> Self {
         Minutiae {
             inner: minutiae.to_vec(),
             img_w,
             img_h,
             nfiq,
+            roi,
         }
     }
 }
@@ -63,5 +71,10 @@ impl Minutiae {
 
     pub fn to_iso_19794_2_2005(&self, min_quality: f64) -> Vec<u8> {
         crate::encoding::to_iso_19794_2_2005(self, min_quality)
+    }
+
+    /// Returns the ROI (Region of Interest) associated with these minutiae, if any.
+    pub fn roi(&self) -> Option<ROI> {
+        self.roi.clone()
     }
 }

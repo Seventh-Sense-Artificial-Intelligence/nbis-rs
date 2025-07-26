@@ -288,5 +288,6 @@ pub fn load_iso_19794_2_2005(template_bytes: &[u8]) -> Result<Minutiae, NbisErro
             nfiq: finger_quality,
             confidence: 1.0,
         },
+        None, // No ROI in ISO templates
     ))
 }

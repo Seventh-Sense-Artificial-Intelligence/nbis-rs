@@ -11,7 +11,12 @@ use imageproc::rect::Rect;
 
 use crate::consts::MM_PER_INCH;
 use crate::errors::NbisError;
-use crate::ffi::{comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts, dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2, sivv_ffi_free_bytes, sivv_ffi_from_bytes, znorm_fniq_featvctr, CPoint2i, LFSPARMS, MINUTIAE, MIN_MINUTIAE, NFIQ_NUM_CLASSES, NFIQ_VCTRLEN};
+use crate::ffi::{
+    comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts,
+    dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2,
+    sivv_ffi_free_bytes, sivv_ffi_from_bytes, znorm_fniq_featvctr, CPoint2i, LFSPARMS, MINUTIAE,
+    MIN_MINUTIAE, NFIQ_NUM_CLASSES, NFIQ_VCTRLEN,
+};
 use crate::imutils::{draw_arrow_with_head, png_bytes_from_rgb};
 use crate::{Minutia, MinutiaKind, Minutiae};
 
@@ -51,6 +56,28 @@ pub struct NfiqResult {
     /// A value between 0.0 and 1.0, where 1.0 means very confident.
     /// This is a floating point value.
     pub confidence: f32,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct Point {
+    /// The x-coordinate of the point.
+    pub x: i32,
+    /// The y-coordinate of the point.
+    pub y: i32,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct ROI {
+    /// The x-coordinate of the top-left corner of the ROI.
+    pub x1: i32,
+    /// The y-coordinate of the top-left corner of the ROI.
+    pub y1: i32,
+    /// The x-coordinate of the bottom-right corner of the ROI.
+    pub x2: i32,
+    /// The y-coordinate of the bottom-right corner of the ROI.
+    pub y2: i32,
+    /// The center point of the ROI.
+    pub center: Point,
 }
 
 /// Represents the quality of a fingerprint image as determined by NFIQ.
@@ -128,6 +155,7 @@ fn is_fingerprint(result: &SIVVResult) -> bool {
 }
 
 // Safe Rust wrapper
+#[allow(clippy::type_complexity)]
 pub fn find_fingerprint_center(
     data: *const u8,
     width: c_int,
@@ -166,7 +194,7 @@ fn sivv(image: *mut c_uchar, width: i32, height: i32) -> Result<SIVVResult, Nbis
         );
         let str_result = CStr::from_ptr(ptr).to_string_lossy().into_owned();
         sivv_ffi_free_bytes(ptr);
-        println!("Raw SIVV result: {}", str_result);
+
         // Split the result into parts
         let parts: Vec<&str> = str_result.split(',').map(|s| s.trim()).collect();
         if parts.len() != 7 {
@@ -218,12 +246,6 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
     };
     let (iw, ih) = gray.dimensions();
 
-    //get the finger print center
-    let center = find_fingerprint_center(gray.as_ptr() as *mut c_uchar, iw as c_int, ih as c_int)
-        .map_err(|e| NbisError::GenericError(e.to_string()))?;
-    println!("Fingerprint center: x:{:?}, y:{:?}, bbox, x1:{:?}, x2:{:?}, y1:{:?}, y2:{:?} ", center.0.x, center.0.y,
-             center.1.0, center.1.1, center.1.2, center.1.3 );
-
     // 2) Check SIVV result -----------------------------------
     let sivv_result = sivv(gray.as_ptr() as *mut c_uchar, iw as i32, ih as i32)?;
     if !is_fingerprint(&sivv_result) {
@@ -236,8 +258,24 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
                 nfiq: NfiqQuality::Unknown,
                 confidence: 0.0,
             },
+            None, // No ROI in this case
         ));
     }
+
+    //get the finger print center
+    let center = find_fingerprint_center(gray.as_ptr() as *mut c_uchar, iw as c_int, ih as c_int)
+        .map_err(|e| NbisError::GenericError(e.to_string()))?;
+
+    let roi = ROI {
+        x1: center.1 .0,
+        x2: center.1 .1,
+        y1: center.1 .2,
+        y2: center.1 .3,
+        center: Point {
+            x: center.0.x,
+            y: center.0.y,
+        },
+    };
 
     // Buffers and sizes returned by the C API -------------------------------
     let mut ominutiae: *mut MINUTIAE = null_mut();
@@ -386,7 +424,7 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
                 }
             })
             .collect();
-        Minutiae::new(minutiae_vec, iw, ih, quality)
+        Minutiae::new(minutiae_vec, iw, ih, quality, Some(roi))
     };
 
     // 4) Free C allocations we no longer need -------------------------------
@@ -551,12 +589,6 @@ mod tests {
     use std::fs;
 
     #[test]
-    fn test_one_path() {
-        let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
-        let _res = extract_minutiae(&p1_1, None).unwrap();
-    }
-
-    #[test]
     fn test_match() {
         // Load test images (these should be raw bytes of PNG/JPEG images)
         let p_1 = fs::read("test_data/p1/p1_1.png").unwrap();
@@ -688,7 +720,7 @@ mod tests {
             });
         }
 
-        let many_res = Minutiae::new(many_minutiae, res.img_w, res.img_h, res.nfiq);
+        let many_res = Minutiae::new(many_minutiae, res.img_w, res.img_h, res.nfiq, None);
         let many_encoded = many_res.to_iso_19794_2_2005(0.0);
         assert!(
             !many_encoded.is_empty(),
@@ -781,5 +813,62 @@ mod tests {
         let res2_n_2 = extract_minutiae(&n_2, None).unwrap();
         let score_n_2 = res1_n_2.compare(&res2_n_2);
         println!("Score for negative image: {:?}", score_n_2);
+    }
+
+    #[test]
+    fn test_roi() {
+        let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
+        let res = extract_minutiae(&p1_1, None).unwrap();
+        assert!(res.roi().is_some(), "Expected ROI to be present");
+        let roi = res.roi().unwrap();
+
+        assert!(
+            roi.x1 < roi.x2 && roi.y1 < roi.y2,
+            "ROI coordinates should be valid"
+        );
+        assert!(roi.x1 == 0, "Expected ROI x1 to be 0");
+        assert!(roi.y1 == 96, "Expected ROI y1 to be 96");
+        assert!(roi.x2 == 382, "Expected ROI x2 to be 382");
+        assert!(roi.y2 == 496, "Expected ROI y2 to be 496");
+        assert_eq!(roi.center.x, 182, "Expected ROI center x to be 182");
+        assert_eq!(roi.center.y, 296, "Expected ROI center y to be 296");
+
+        // Uncomment the following lines to visualize the ROI on the image
+        // // Load the original image to draw the ROI
+        // let mut image_rgb = match image::load_from_memory(&p1_1) {
+        //     Ok(img) => match img {
+        //         image::DynamicImage::ImageRgb8(rgb) => rgb,
+        //         other => other.to_rgb8(),
+        //     },
+        //     Err(_) => panic!("Failed to load image"),
+        // };
+        // let rect = Rect::at(roi.x1, roi.y1).of_size(
+        //     (roi.x2 - roi.x1) as u32,
+        //     (roi.y2 - roi.y1) as u32,
+        // );
+        // // Draw a red (hollow) rectangle around the ROI
+        // imageproc::drawing::draw_hollow_rect_mut(
+        //     &mut image_rgb,
+        //     rect,
+        //     Rgb([255, 0, 0]),
+        // );
+
+        // // Draw a cross at the center of the ROI
+        // let center_x = roi.center.x;
+        // let center_y = roi.center.y;
+
+        // // Horizontal line
+        // imageproc::drawing::draw_cross_mut(
+        //     &mut image_rgb,
+        //     Rgb([0, 255, 0]),
+        //     center_x,
+        //     center_y,
+        // );
+
+        // // Save the annotated image to verify the ROI visually
+        // let annotated_path = "test_data/p1/p1_1_roi.png";
+        // image_rgb
+        //     .save(annotated_path)
+        //     .expect("Failed to save annotated image with ROI");
     }
 }

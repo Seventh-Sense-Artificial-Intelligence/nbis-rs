@@ -287,11 +287,7 @@ extern "C" {
 }
 
 extern "C" {
-    pub(crate) fn sivv_ffi_from_bytes(
-        data: *const u8,
-        width: c_int,
-        height: c_int,
-    ) -> *mut c_char;
+    pub(crate) fn sivv_ffi_from_bytes(data: *const u8, width: c_int, height: c_int) -> *mut c_char;
     pub(crate) fn sivv_ffi_free_bytes(ptr: *mut c_char);
 }
 

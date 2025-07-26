@@ -13,7 +13,8 @@ mod minutia;
 mod minutiae;
 
 pub use api::{
-    extract_minutiae, extract_minutiae_from_image_file, load_iso_19794_2_2005, NfiqQuality,
+    extract_minutiae, extract_minutiae_from_image_file, load_iso_19794_2_2005, NfiqQuality, Point,
+    ROI,
 };
 pub use errors::NbisError;
 pub use minutia::{Minutia, MinutiaKind, Position};
