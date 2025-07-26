@@ -1,6 +1,7 @@
 /target
 **/.DS_Store
 dist/
+__pycache__/
 *.pyc
 .venv/ 
 .pytest_cache/

@@ -6,7 +6,7 @@
     clippy::upper_case_acronyms
 )]
 use libc::FILE;
-use std::os::raw::{c_double, c_int, c_uchar, c_void};
+use std::os::raw::{c_char, c_double, c_int, c_uchar, c_void};
 use std::sync::Once;
 
 /* -----------------------------------------------------------------------
@@ -284,4 +284,27 @@ extern "C" {
         map_h: ::std::os::raw::c_int,
         optflag: *mut ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
+}
+
+extern "C" {
+    pub(crate) fn sivv_ffi_from_bytes(data: *const u8, width: c_int, height: c_int) -> *mut c_char;
+    pub(crate) fn sivv_ffi_free_bytes(ptr: *mut c_char);
+}
+
+#[repr(C)]
+pub struct CPoint2i {
+    pub x: c_int,
+    pub y: c_int,
+}
+
+extern "C" {
+    pub(crate) fn find_fingerprint_center_morph_c(
+        data: *const u8,
+        width: c_int,
+        height: c_int,
+        xbound_min: *mut c_int,
+        xbound_max: *mut c_int,
+        ybound_min: *mut c_int,
+        ybound_max: *mut c_int,
+    ) -> CPoint2i;
 }
