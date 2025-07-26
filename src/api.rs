@@ -812,7 +812,7 @@ mod tests {
         let res1_n_2 = extract_minutiae(&n_2, None).unwrap();
         let res2_n_2 = extract_minutiae(&n_2, None).unwrap();
         let score_n_2 = res1_n_2.compare(&res2_n_2);
-        println!("Score for negative image: {:?}", score_n_2);
+        assert_eq!(score_n_2, 0);
     }
 
     #[test]
