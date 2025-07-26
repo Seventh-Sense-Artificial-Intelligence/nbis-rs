@@ -181,6 +181,7 @@ fn main() {
 
     cc::Build::new()
         .cpp(true)
+        .flag("-std=c++11") 
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
