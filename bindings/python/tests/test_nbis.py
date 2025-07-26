@@ -41,7 +41,8 @@ def test_similarity_within_class(minutiae_p1_1, minutiae_p1_2, minutiae_p1_3):
     assert score_2_3 > 50, "Expected high similarity between p1_2 and p1_3"
 
 def test_iso_template_round_trip(minutiae_p1_1):
-    iso_template = minutiae_p1_1.to_iso_19794_2_2005()
+    # Set minimum quality to 0.0 for no filtering
+    iso_template = minutiae_p1_1.to_iso_19794_2_2005(0.0)
     minutiae_loaded = nbis.load_iso_19794_2_2005(iso_template)
 
     for original, loaded in zip(minutiae_p1_1.get(), minutiae_loaded.get()):

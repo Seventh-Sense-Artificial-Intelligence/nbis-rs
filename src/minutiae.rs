@@ -3,10 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::api::NfiqResult;
 use crate::minutia::Minutia;
-use crate::{
-    bozorth::bz_match_score,
-    encoding::{encode_minutia, to_nist_xyt_set},
-};
+use crate::{bozorth::bz_match_score, encoding::to_nist_xyt_set};
 /// A set of minutiae extracted from a fingerprint image.
 #[derive(Debug, Clone, uniffi::Object)]
 pub struct Minutiae {
@@ -64,48 +61,7 @@ impl Minutiae {
         self.inner.iter().cloned().map(Arc::new).collect()
     }
 
-    /// Convert this set of minutiae into an ISO/IEC 19794-2:2005 template.
-    /// The result is a `Vec<u8>` containing the full template data.
-    pub fn to_iso_19794_2_2005(&self) -> Vec<u8> {
-        let total_bytes = self.inner.len() * 6 + 28 + 2;
-
-        let total_bytes_u32 =
-            u32::try_from(total_bytes).expect("template larger than 4 294 967 295 bytes");
-
-        let width = self.img_w as u16;
-        let height = self.img_h as u16;
-
-        let mut buf = Vec::with_capacity(28);
-
-        // "FMR\0 20\0"  – 8 bytes
-        buf.extend_from_slice(b"FMR\0 20\0");
-
-        // 4-byte total length (big-endian)
-        buf.extend_from_slice(&total_bytes_u32.to_be_bytes());
-
-        // Two 0x00 padding bytes
-        buf.extend_from_slice(&[0x00, 0x00]);
-
-        // Width & height (big-endian, 2 bytes each)
-        buf.extend_from_slice(&width.to_be_bytes());
-        buf.extend_from_slice(&height.to_be_bytes());
-
-        // Constant block 00 C5 00 C5 01 00 00 00 64
-        buf.extend_from_slice(&[0x00, 0xC5, 0x00, 0xC5, 0x01, 0x00, 0x00, 0x00, 0x64]);
-
-        // Number of minutiae
-        let num_minutiae = self.inner.len() as i8;
-        buf.extend_from_slice(&num_minutiae.to_be_bytes());
-
-        for m in self.inner.iter() {
-            // Encode each minutia into 6 bytes
-            let encoded = encode_minutia(m);
-            buf.extend_from_slice(&encoded);
-        }
-
-        let zero: u16 = 0; // same value as Python’s `zero = 0`
-        buf.extend_from_slice(&zero.to_be_bytes());
-
-        buf
+    pub fn to_iso_19794_2_2005(&self, min_quality: f64) -> Vec<u8> {
+        crate::encoding::to_iso_19794_2_2005(self, min_quality)
     }
 }
