@@ -50,7 +50,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Next we will demonstrate conversion to ISO/IEC 19794-2:2005 format
     // and back to a `Minutiae` object.
     // First, convert the minutiae to ISO template bytes
-    let iso_template: Vec<u8> = minutiae_1.to_iso_19794_2_2005();
+    let minimum_minutia_quality = 0.0; // Set minimum quality to 0.0 for no filtering
+    let iso_template: Vec<u8> = minutiae_1.to_iso_19794_2_2005(minimum_minutia_quality);              
     // And load it back
     let minutiae_from_iso = nbis::load_iso_19794_2_2005(&iso_template)?;
     // Compare the original minutiae with the one loaded from ISO template

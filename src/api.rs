@@ -9,7 +9,6 @@ use imageproc::drawing::{draw_filled_circle_mut, draw_filled_rect_mut};
 use imageproc::rect::Rect;
 
 use crate::consts::MM_PER_INCH;
-use crate::encoding::decode_minutia;
 use crate::errors::NbisError;
 use crate::ffi::{
     comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts,
@@ -65,6 +64,30 @@ impl NfiqQuality {
             4 => Some(NfiqQuality::Fair),
             5 => Some(NfiqQuality::Poor),
             _ => None,
+        }
+    }
+
+    /// Encodes `NfiqQuality` as a 0–100 ISO quality byte.
+    pub fn to_iso_quality(&self) -> u8 {
+        match self {
+            NfiqQuality::Excellent => 100,
+            NfiqQuality::VeryGood => 80,
+            NfiqQuality::Good => 60,
+            NfiqQuality::Fair => 40,
+            NfiqQuality::Poor => 20,
+            NfiqQuality::Unknown => 0,
+        }
+    }
+
+    /// Decodes a 0–100 ISO quality byte into `NfiqQuality`.
+    pub fn from_iso_quality(value: u8) -> Self {
+        match value {
+            90..=100 => NfiqQuality::Excellent,
+            70..=89 => NfiqQuality::VeryGood,
+            50..=69 => NfiqQuality::Good,
+            30..=49 => NfiqQuality::Fair,
+            1..=29 => NfiqQuality::Poor,
+            _ => NfiqQuality::Unknown,
         }
     }
 }
@@ -271,56 +294,7 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
 /// If the template is invalid or cannot be parsed, returns an [`NbisError`].
 #[uniffi::export]
 pub fn load_iso_19794_2_2005(template_bytes: &[u8]) -> Result<Minutiae, NbisError> {
-    if template_bytes.len() < 28 {
-        return Err(NbisError::InvalidTemplate(
-            "ISO template too short".to_string(),
-        ));
-    }
-
-    // Check the header
-    if &template_bytes[0..8] != b"FMR\0 20\0" {
-        return Err(NbisError::InvalidTemplate("Invalid ISO header".to_string()));
-    }
-
-    let total_length = u32::from_be_bytes([
-        template_bytes[8],
-        template_bytes[9],
-        template_bytes[10],
-        template_bytes[11],
-    ]) as usize;
-    if total_length != template_bytes.len() {
-        return Err(NbisError::InvalidTemplate(
-            "Total length mismatch".to_string(),
-        ));
-    }
-
-    let width = u16::from_be_bytes([template_bytes[14], template_bytes[15]]);
-    let height = u16::from_be_bytes([template_bytes[16], template_bytes[17]]);
-
-    let num_minutiae = i8::from_be_bytes([template_bytes[27]]) as usize;
-
-    let mut minutiae = Vec::with_capacity(num_minutiae);
-    for i in 0..num_minutiae {
-        let start = 28 + 6 * i;
-        let end = start + 6;
-        if end > template_bytes.len() {
-            return Err(NbisError::InvalidTemplate(
-                "Minutia data overflow".to_string(),
-            ));
-        }
-        let m_bytes: [u8; 6] = template_bytes[start..end].try_into().unwrap();
-        minutiae.push(decode_minutia(&m_bytes));
-    }
-
-    Ok(Minutiae::new(
-        minutiae,
-        width as u32,
-        height as u32,
-        NfiqResult {
-            nfiq: NfiqQuality::Unknown,
-            confidence: 0.0,
-        },
-    ))
+    crate::encoding::load_iso_19794_2_2005(template_bytes)
 }
 
 /// Extracts minutiae from an 8‑bit grayscale fingerprint image using the
@@ -530,10 +504,18 @@ mod tests {
     fn test_encode_to_iso() {
         let bryanc_1 = fs::read("test_data/p1/p1_1.png").unwrap();
         let res = extract_minutiae(&bryanc_1, None).unwrap();
-        let encoded = res.to_iso_19794_2_2005();
+        let encoded = res.to_iso_19794_2_2005(0.0);
         assert!(!encoded.is_empty(), "Encoded ISO data should not be empty");
 
         let minutiae = load_iso_19794_2_2005(&encoded).unwrap();
+
+        // Qualiity should match the original
+        assert_eq!(
+            res.quality().nfiq,
+            minutiae.quality().nfiq,
+            "NFIQ quality should match original"
+        );
+
         assert_eq!(
             minutiae.inner.len(),
             res.inner.len(),
@@ -567,6 +549,33 @@ mod tests {
             );
             assert_eq!(m1.kind, m2.kind, "Kind should match");
         }
+
+        // Test encode with more than 255 minutiae
+        let mut many_minutiae = res.inner.clone();
+        // Add dummy minutiae to exceed 255
+        for i in 0..300 {
+            many_minutiae.push(Minutia {
+                x: i as i32,
+                y: i as i32,
+                direction: 0,
+                reliability: 0.0,
+                kind: MinutiaKind::RidgeEnding,
+            });
+        }
+
+        let many_res = Minutiae::new(many_minutiae, res.img_w, res.img_h, res.nfiq);
+        let many_encoded = many_res.to_iso_19794_2_2005(0.0);
+        assert!(
+            !many_encoded.is_empty(),
+            "Encoded ISO data should not be empty"
+        );
+
+        let many_minutiae_decoded = load_iso_19794_2_2005(&many_encoded).unwrap();
+        assert_eq!(
+            many_minutiae_decoded.inner.len(),
+            255,
+            "Decoded minutiae count should be capped at 255"
+        );
     }
 
     #[test]
@@ -646,6 +655,6 @@ mod tests {
         let res1_n_2 = extract_minutiae(&n_2, None).unwrap();
         let res2_n_2 = extract_minutiae(&n_2, None).unwrap();
         let score_n_2 = res1_n_2.compare(&res2_n_2);
-        println!("{:?}", score_n_2);
+        println!("Score for negative image: {:?}", score_n_2);
     }
 }
