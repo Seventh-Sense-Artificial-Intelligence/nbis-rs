@@ -4,6 +4,15 @@ set -e
 # Create dist folder if it doesn't exist
 mkdir -p dist
 
+if [ -f /etc/os-release ] && grep -qiE 'ubuntu|debian' /etc/os-release; then
+  echo "Detected Debian/Ubuntu; installing required packages..."
+  sudo apt-get update
+  sudo apt-get install -y openjdk-17-jdk
+else
+  echo "This script is designed for Debian/Ubuntu systems."
+  exit 1
+fi
+
 # Set path to jniLibs target dir
 JNILIBS_DIR="bindings/android/app/src/main/jniLibs"
 
