@@ -216,7 +216,6 @@ fn main() {
     if is_windows {
         cc::Build::new()
             .file("ext/sys_time/fakestderr.c")
-            .compiler("C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe")
             .compile("fakestderr");
     }
 
