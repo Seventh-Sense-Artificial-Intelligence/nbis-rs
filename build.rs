@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::env;
 
 fn android_abi_from_target(target: &str) -> Option<&'static str> {
     if target.contains("aarch64") {
@@ -181,7 +181,7 @@ fn main() {
 
     cc::Build::new()
         .cpp(true)
-        .flag("-std=c++11") 
+        .flag("-std=c++11")
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
@@ -194,9 +194,6 @@ fn main() {
         .compile("sivv");
 
     if is_android || is_linux {
-        use std::fs;
-
-        let out_dir = dst.display().to_string();
         let opencv_lib_dir = if is_android {
             let abi = android_abi_from_target(&target).expect("Unsupported Android target");
             dst.join("build").join("lib").join(abi)
@@ -204,21 +201,11 @@ fn main() {
             dst.join("build").join("lib")
         };
 
-        // List of expected OpenCV static libs
-        for entry in fs::read_dir(&opencv_lib_dir).expect("Failed to read OpenCV lib dir") {
-            let entry = entry.expect("Failed to read dir entry");
-            let path = entry.path();
-
-            if path.extension().is_some_and(|ext| ext == "a") {
-                let filename = path.file_name().unwrap();
-                let dst_path = Path::new(&out_dir).join(filename);
-                fs::copy(&path, &dst_path)
-                    .unwrap_or_else(|_| panic!("Failed to copy static lib {}", path.display()));
-            }
-        }
-
-        // Set Android-specific link search path
-        println!("cargo:rustc-link-search=native={}", out_dir);
+        // Set lib path
+        println!(
+            "cargo:rustc-link-search=native={}",
+            opencv_lib_dir.display()
+        );
     } else {
         // macOS path
         println!("cargo:rustc-link-search=native={}/lib", dst.display());
