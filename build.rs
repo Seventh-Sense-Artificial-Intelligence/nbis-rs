@@ -181,7 +181,7 @@ fn main() {
 
     cc::Build::new()
         .cpp(true)
-        .flag("-std=c++11") 
+        .flag("-std=c++11")
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
@@ -202,7 +202,10 @@ fn main() {
         };
 
         // Set lib path
-        println!("cargo:rustc-link-search=native={}", opencv_lib_dir.display());
+        println!(
+            "cargo:rustc-link-search=native={}",
+            opencv_lib_dir.display()
+        );
     } else {
         // macOS path
         println!("cargo:rustc-link-search=native={}/lib", dst.display());
