@@ -42,57 +42,38 @@ of the software.
 *******************************************************************************/
 
 
-#ifndef _UTIL_H
-#define _UTIL_H
+/***********************************************************************
+      LIBRARY: UTIL - General Purpose Utility Routines
 
-/* UPDATED: 03/15/2005 by MDG */
-#ifdef __MSYS__
-#include <sys/time.h>
-#else
-#include "sys/times.h"
-#endif
+      FILE:    FATALERR.C
+      AUTHOR:  Michael Garris
+      DATE:    12/19/1990
+      UPDATED: 04/25/2005 by MDG
 
-#ifndef True
-#define True	1
-#define False	0
-#endif
+      Contains routines responsible for exiting upon an application error.
 
-/* bres.c */
-extern int bres_line_alloc(const int, const int, const int, const int, int **,
-           int **, int *, int *);
+      ROUTINES:
+#cat: fatalerr - generic application error handler that prints a specified
+#cat:            message to stderr and exits with a status of 1.
 
-/* bubble.c */
-extern void bubble_sort_int(int *, const int);
+***********************************************************************/
 
-/* fatalerr.c */
-extern void fatalerr(char *, char *, char *);
+/* LINTLIBRARY */
 
-/* invbytes.h */
-extern void inv_bytes(unsigned char *, int);
+#include <stdio.h>
+#include <stdlib.h>
 
-/* ssxstats.c */
-extern double ssx_stddev(const double, const double, const int);
-extern double ssx_variance(const double, const double, const int);
-extern double ssx(const double, const double, const int);
+void fatalerr(char *s1, char *s2, char *s3)
+{
 
-/* syserr.c */
-extern void syserr(char *, char *, char *);
+  (void) fflush(stdout);
+   if (s2 == (char *) NULL)
+	(void) fprintf(stderr,"ERROR: %s\n",s1);
+   else if (s3 == (char *) NULL)
+	(void) fprintf(stderr,"ERROR: %s: %s\n",s1,s2);
+   else
+	(void) fprintf(stderr,"ERROR: %s: %s: %s\n",s1,s2,s3);
+   (void) fflush(stderr);
 
-/* ticks.c */
-extern clock_t ticks(void);
-extern int ticksPerSec(void);
-
-/* time.c */
-extern char *current_time(void);
-
-/* fixup.c */
-/*
-#ifdef __MSYS__
-extern void __assert(const char *, int, const char *);
-
-extern char *index(const char *, int);
-
-extern void sleep (const int);
-#endif
-*/
-#endif /* !_UTIL_H */
+   exit(1);
+}

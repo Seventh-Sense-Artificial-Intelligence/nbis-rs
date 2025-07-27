@@ -42,57 +42,36 @@ of the software.
 *******************************************************************************/
 
 
-#ifndef _UTIL_H
-#define _UTIL_H
+/***********************************************************************
+      LIBRARY: UTIL - General Purpose Utility Routines
 
-/* UPDATED: 03/15/2005 by MDG */
-#ifdef __MSYS__
-#include <sys/time.h>
-#else
-#include "sys/times.h"
-#endif
+      FILE:    SYSERR.C
+      AUTHOR:  Michael Garris
+      DATE:    12/19/1990
+      UPDATED: 04/25/2005 by MDG
 
-#ifndef True
-#define True	1
-#define False	0
-#endif
+      Contains routines responsible for exiting upon an system error.
 
-/* bres.c */
-extern int bres_line_alloc(const int, const int, const int, const int, int **,
-           int **, int *, int *);
+      ROUTINES:
+#cat: syserr - exits on error with a status of -1, printing to stderr a
+#cat:          caller-defined message.
 
-/* bubble.c */
-extern void bubble_sort_int(int *, const int);
+***********************************************************************/
 
-/* fatalerr.c */
-extern void fatalerr(char *, char *, char *);
+/* LINTLIBRARY */
 
-/* invbytes.h */
-extern void inv_bytes(unsigned char *, int);
+#include <stdio.h>
+#include <stdlib.h>
 
-/* ssxstats.c */
-extern double ssx_stddev(const double, const double, const int);
-extern double ssx_variance(const double, const double, const int);
-extern double ssx(const double, const double, const int);
+void syserr(char *funcname, char *syscall, char *msg)
+{
 
-/* syserr.c */
-extern void syserr(char *, char *, char *);
+   (void) fflush(stdout);
+   if(msg == NULL)
+      (void) fprintf(stderr,"ERROR: %s: %s\n",funcname,syscall);
+   else
+      (void) fprintf(stderr,"ERROR: %s: %s: %s\n",funcname,syscall,msg);
+   (void) fflush(stderr);
 
-/* ticks.c */
-extern clock_t ticks(void);
-extern int ticksPerSec(void);
-
-/* time.c */
-extern char *current_time(void);
-
-/* fixup.c */
-/*
-#ifdef __MSYS__
-extern void __assert(const char *, int, const char *);
-
-extern char *index(const char *, int);
-
-extern void sleep (const int);
-#endif
-*/
-#endif /* !_UTIL_H */
+   exit(-1);
+}

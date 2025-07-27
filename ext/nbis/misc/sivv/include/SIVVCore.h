@@ -66,6 +66,7 @@ of the software.
 #ifndef BNIS_SIVV_CORE_H
 #define BNIS_SIVV_CORE_H
 
+#include <stdio.h>
 #include <vector>
 #include <string>
 #include <opencv2/core/types_c.h>

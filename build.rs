@@ -21,6 +21,7 @@ fn main() {
     let target = env::var("TARGET").unwrap_or_default();
     let is_android = target.contains("android");
     let is_linux = target.contains("linux") && !target.contains("android");
+    let is_windows = target.contains("windows");
 
     // ---- CMake for OpenCV ----
     let mut cmake = cmake::Config::new("ext/opencv-4.10.0");
@@ -32,7 +33,7 @@ fn main() {
         } else if target.contains("armv7") {
             "armeabi-v7a"
         } else {
-            panic!("Unsupported Android ABI: {}", target);
+            panic!("Unsupported Android ABI: {target}");
         };
 
         cmake
@@ -56,15 +57,17 @@ fn main() {
             .build_target("install")
             .define(
                 "CMAKE_TOOLCHAIN_FILE",
-                format!("{}/build/cmake/android.toolchain.cmake", ndk),
+                format!("{ndk}/build/cmake/android.toolchain.cmake"),
             );
     }
 
-    cc::Build::new()
-        .file("ext/nbis/nfiq/src/lib/nfiq/nfiq.c")
+    let mut nfiq_cc = cc::Build::new();
+    nfiq_cc.file("ext/nbis/nfiq/src/lib/nfiq/nfiq.c")
         .file("ext/nbis/nfiq/src/lib/nfiq/nfiqgbls.c")
         .file("ext/nbis/nfiq/src/lib/nfiq/nfiqread.c")
         .file("ext/nbis/nfiq/src/lib/nfiq/znorm.c")
+        .file("ext/nbis/commonbis/src/lib/util/syserr.c")
+        .file("ext/nbis/commonbis/src/lib/util/fatalerr.c")
         .file("ext/nbis/commonbis/src/lib/util/memalloc.c")
         .file("ext/nbis/commonbis/src/lib/util/ssxstats.c")
         .file("ext/nbis/commonbis/src/lib/ioutil/dataio.c")
@@ -87,11 +90,16 @@ fn main() {
         .include("ext/nbis/mindtct/include")
         .include("ext/nbis/commonbis/include")
         .include("ext/nbis/imgtools/include")
+        .file("ext/sys_time/time.cpp")
+        .include("ext/sys_time")
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .compile("nfiq");
+        ;
 
-    cc::Build::new()
+    nfiq_cc.compile("nfiq");
+
+    let mut bozorth_cc = cc::Build::new();
+    bozorth_cc
         .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_alloc.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_drvrs.c")
@@ -99,13 +107,18 @@ fn main() {
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_io.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_sort.c")
         .include("ext/nbis/commonbis/include")
+        .file("ext/sys_time/time.cpp")
+        .include("ext/sys_time")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth_glue.c")
         .include("ext/nbis/bozorth/include") // to find bozorth.h
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .compile("bozorth");
+        ;
 
-    cc::Build::new()
+    bozorth_cc.compile("bozorth");
+
+    let mut mindtct_cc = cc::Build::new();
+    mindtct_cc
         .file("ext/nbis/mindtct/src/lib/mindtct/log.c")
         .file("ext/nbis/mindtct/src/lib/mindtct/line.c")
         .file("ext/nbis/mindtct/src/lib/mindtct/contour.c")
@@ -134,10 +147,14 @@ fn main() {
         .file("ext/nbis/mindtct/src/lib/mindtct/maps.c")
         .file("ext/nbis/mindtct/src/lib/mindtct/xytreps.c")
         .file("ext/nbis/mindtct/src/lib/mindtct/getmin.c")
+        .file("ext/sys_time/time.cpp")
+        .include("ext/sys_time")
         .include("ext/nbis/mindtct/include") // to find bozorth.h
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .compile("mindtct");
+        ;
+
+    mindtct_cc.compile("mindtct");
 
     let dst = cmake
         .define("BUILD_SHARED_LIBS", "OFF")
@@ -173,25 +190,35 @@ fn main() {
         .define("BUILD_TESTS", "OFF")
         .define("BUILD_ZLIB", "OFF")
         .define("BUILD_PERF_TESTS", "OFF")
+        .define("OPENCV_INCLUDE_INSTALL_PATH", "include/opencv4")
         .define("CMAKE_CXX_STANDARD", "14")
         .build();
 
-    // Print dst as a warning for the user
-    //eprintln!("OpenCV build directory: {}", dst.display());
-
-    cc::Build::new()
+    let mut sivv_cpp = cc::Build::new();
+    sivv_cpp
         .cpp(true)
         .flag("-std=c++11") 
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
         .include(dst.join("include/opencv4"))
+        .file("ext/sys_time/time.cpp")
+        .include("ext/sys_time")
         // Additional includes for Android
         .include(dst.join("build/opencv_install/sdk/native/jni/include"))
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         .flag_if_supported("-Wno-everything") // extra if using
-        .compile("sivv");
+        ;
+
+    sivv_cpp.compile("sivv");
+
+    if is_windows {
+        cc::Build::new()
+            .file("ext/sys_time/fakestderr.c")
+            .compiler("C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe")
+            .compile("fakestderr");
+    }
 
     if is_android || is_linux {
         use std::fs;
@@ -218,14 +245,25 @@ fn main() {
         }
 
         // Set Android-specific link search path
-        println!("cargo:rustc-link-search=native={}", out_dir);
+        println!("cargo:rustc-link-search=native={out_dir}");
     } else {
         // macOS path
         println!("cargo:rustc-link-search=native={}/lib", dst.display());
     }
 
-    println!("cargo:rustc-link-lib=static=opencv_imgproc");
-    println!("cargo:rustc-link-lib=static=opencv_core");
+    if !is_windows {
+        println!("cargo:rustc-link-lib=static=opencv_imgproc");
+        println!("cargo:rustc-link-lib=static=opencv_core");
+    } else {
+        println!("cargo:rustc-link-search=native=C:/msys64/mingw64/lib");
+        println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
+        println!("cargo:rustc-link-lib=static=opencv_imgproc4100");
+        println!("cargo:rustc-link-lib=static=opencv_core4100");
+        println!("cargo:rustc-link-lib=static=openblas");
+        println!("cargo:rustc-link-lib=static=gomp");
+        println!("cargo:rustc-link-lib=static=stdc++");
+    }
+
     println!("cargo:rustc-link-lib=z");
 
     // Automatically re-run build.rs if these files change

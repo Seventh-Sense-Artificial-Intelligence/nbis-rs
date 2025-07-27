@@ -55,7 +55,7 @@ of the software.
 #ifdef __MSYS__
 #include <sys/time.h>
 #else
-#include <sys/times.h>
+#include "sys/times.h"
 #endif
 
 #ifdef TIMER
