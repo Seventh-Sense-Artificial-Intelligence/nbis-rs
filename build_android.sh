@@ -56,6 +56,16 @@ for TARGET in "${TARGETS[@]}"; do
   cp "target/android/$ABI/$LIB_NAME" "$JNILIBS_DIR/$ABI/"
 done
 
+HOST_OS=$(uname -s)
+if [ "$HOST_OS" = "Darwin" ]; then
+  PREBUILT="darwin-x86_64"
+else
+  PREBUILT="linux-x86_64"
+fi
+
+cp $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$PREBUILT/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so bindings/android/app/src/main/jniLibs/armeabi-v7a/
+cp $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$PREBUILT/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so bindings/android/app/src/main/jniLibs/arm64-v8a/
+
 echo "✅ Done. .so files copied to $JNILIBS_DIR"
 
 # Detect platform-specific dynamic library extension
