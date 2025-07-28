@@ -32,7 +32,7 @@ fn main() {
         } else if target.contains("armv7") {
             "armeabi-v7a"
         } else {
-            panic!("Unsupported Android ABI: {}", target);
+            panic!("Unsupported Android ABI: {target}");
         };
 
         cmake
@@ -57,7 +57,7 @@ fn main() {
             .build_target("install")
             .define(
                 "CMAKE_TOOLCHAIN_FILE",
-                format!("{}/build/cmake/android.toolchain.cmake", ndk),
+                format!("{ndk}/build/cmake/android.toolchain.cmake"),
             );
     }
 

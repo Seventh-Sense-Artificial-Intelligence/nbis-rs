@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::{
-    api::NfiqResult, bozorth::MinutiaeSet, consts::NUM_DIRECTIONS, ffi::MAX_BOZORTH_MINUTIAE,
+    api::NfiqResult, bozorth::MinutiaeSet, consts::NUM_DIRECTIONS, ffi::DEFAULT_BOZORTH_MINUTIAE,
     Minutia, MinutiaKind, Minutiae, NbisError, NfiqQuality,
 };
 
@@ -77,7 +77,7 @@ pub(crate) fn to_nist_xyt_set(minutiae: &Minutiae) -> MinutiaeSet {
     // 1. Copy, sort by reliability (desc), truncate
     let mut top = minutiae.inner.clone();
     top.sort_by(|a, b| b.reliability.partial_cmp(&a.reliability).unwrap());
-    top.truncate(MAX_BOZORTH_MINUTIAE); // hard Bozorth limit
+    top.truncate(DEFAULT_BOZORTH_MINUTIAE); // what is used by bzprune
 
     // 2. Convert to NIST XYT
     let mut xs = Vec::with_capacity(top.len());
@@ -168,7 +168,7 @@ pub fn to_iso_19794_2_2005(minutiae_obj: &Minutiae, min_quality: f64) -> Vec<u8>
                 .partial_cmp(&a.reliability)
                 .unwrap_or(Ordering::Equal)
         });
-        minutiae.truncate(255);
+        minutiae.truncate(DEFAULT_BOZORTH_MINUTIAE);
     }
 
     const ISO_HEADER_LENGTH: usize = 26;

@@ -601,6 +601,8 @@ pub fn annotate_minutiae_from_image_file(
 
 #[cfg(test)]
 mod tests {
+    use crate::ffi::DEFAULT_BOZORTH_MINUTIAE;
+
     use super::*;
     use std::fs;
 
@@ -746,7 +748,7 @@ mod tests {
         let many_minutiae_decoded = load_iso_19794_2_2005(&many_encoded).unwrap();
         assert_eq!(
             many_minutiae_decoded.inner.len(),
-            255,
+            DEFAULT_BOZORTH_MINUTIAE,
             "Decoded minutiae count should be capped at 255"
         );
     }
