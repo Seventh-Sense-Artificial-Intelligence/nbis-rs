@@ -53,6 +53,7 @@ fn main() {
             .define("BUILD_ANDROID_PROJECTS", "OFF")
             .define("BUILD_ANDROID_EXAMPLES", "OFF")
             .define("BUILD_opencv_java", "OFF")
+            .define("WITH_CPUFEATURES", "OFF")
             .build_target("install")
             .define(
                 "CMAKE_TOOLCHAIN_FILE",
@@ -214,6 +215,10 @@ fn main() {
     println!("cargo:rustc-link-lib=static=opencv_imgproc");
     println!("cargo:rustc-link-lib=static=opencv_core");
     println!("cargo:rustc-link-lib=z");
+
+    if is_android {
+        println!("cargo:rustc-link-lib=c++_shared");
+    }
 
     // Automatically re-run build.rs if these files change
     println!("cargo:rerun-if-changed=ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c");
