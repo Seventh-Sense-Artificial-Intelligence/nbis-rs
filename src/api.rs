@@ -230,7 +230,12 @@ fn sivv(image: *mut c_uchar, width: i32, height: i32) -> Result<SIVVResult, Nbis
 ///
 /// This function is the main entry point for fingerprint minutiae extraction.
 #[uniffi::export]
-pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, NbisError> {
+pub fn extract_minutiae(
+    image: &[u8],
+    ppi: Option<f64>,
+    get_center: Option<bool>,
+    check_is_fingerprint: Option<bool>,
+) -> Result<Minutiae, NbisError> {
     let ppi = ppi.unwrap_or(500.0); // default to 500 dpi
 
     // 0) Load the image ------------------------------------------------------
@@ -247,34 +252,45 @@ pub fn extract_minutiae(image: &[u8], ppi: Option<f64>) -> Result<Minutiae, Nbis
     let (iw, ih) = gray.dimensions();
 
     // 2) Check SIVV result -----------------------------------
-    let sivv_result = sivv(gray.as_ptr() as *mut c_uchar, iw as i32, ih as i32)?;
-    if !is_fingerprint(&sivv_result) {
-        // Early return if the image is not a fingerprint
-        return Ok(Minutiae::new(
-            Vec::new(),
-            iw,
-            ih,
-            NfiqResult {
-                nfiq: NfiqQuality::Unknown,
-                confidence: 0.0,
-            },
-            None, // No ROI in this case
-        ));
+    if let Some(check_is_fingerprint) = check_is_fingerprint {
+        if check_is_fingerprint {
+            let sivv_result = sivv(gray.as_ptr() as *mut c_uchar, iw as i32, ih as i32)?;
+            if !is_fingerprint(&sivv_result) {
+                // Early return if the image is not a fingerprint
+                return Ok(Minutiae::new(
+                    Vec::new(),
+                    iw,
+                    ih,
+                    NfiqResult {
+                        nfiq: NfiqQuality::Unknown,
+                        confidence: 0.0,
+                    },
+                    None, // No ROI in this case
+                ));
+            }
+        }
     }
 
     //get the finger print center
-    let center = find_fingerprint_center(gray.as_ptr() as *mut c_uchar, iw as c_int, ih as c_int)
-        .map_err(|e| NbisError::GenericError(e.to_string()))?;
+    let get_center = get_center.unwrap_or(false);
 
-    let roi = ROI {
-        x1: center.1 .0,
-        x2: center.1 .1,
-        y1: center.1 .2,
-        y2: center.1 .3,
-        center: Point {
-            x: center.0.x,
-            y: center.0.y,
-        },
+    let roi = if get_center {
+        let center =
+            find_fingerprint_center(gray.as_ptr() as *mut c_uchar, iw as c_int, ih as c_int)
+                .map_err(|e| NbisError::GenericError(e.to_string()))?;
+
+        Some(ROI {
+            x1: center.1 .0,
+            x2: center.1 .1,
+            y1: center.1 .2,
+            y2: center.1 .3,
+            center: Point {
+                x: center.0.x,
+                y: center.0.y,
+            },
+        })
+    } else {
+        None
     };
 
     // Buffers and sizes returned by the C API -------------------------------
