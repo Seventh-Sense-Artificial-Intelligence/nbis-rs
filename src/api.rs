@@ -232,9 +232,9 @@ fn sivv(image: *mut c_uchar, width: i32, height: i32) -> Result<SIVVResult, Nbis
 #[uniffi::export]
 pub fn extract_minutiae(
     image: &[u8],
+    get_center: bool,
+    check_is_fingerprint: bool,
     ppi: Option<f64>,
-    get_center: Option<bool>,
-    check_is_fingerprint: Option<bool>,
 ) -> Result<Minutiae, NbisError> {
     let ppi = ppi.unwrap_or(500.0); // default to 500 dpi
 
@@ -252,27 +252,25 @@ pub fn extract_minutiae(
     let (iw, ih) = gray.dimensions();
 
     // 2) Check SIVV result -----------------------------------
-    if let Some(check_is_fingerprint) = check_is_fingerprint {
-        if check_is_fingerprint {
-            let sivv_result = sivv(gray.as_ptr() as *mut c_uchar, iw as i32, ih as i32)?;
-            if !is_fingerprint(&sivv_result) {
-                // Early return if the image is not a fingerprint
-                return Ok(Minutiae::new(
-                    Vec::new(),
-                    iw,
-                    ih,
-                    NfiqResult {
-                        nfiq: NfiqQuality::Unknown,
-                        confidence: 0.0,
-                    },
-                    None, // No ROI in this case
-                ));
-            }
+    if check_is_fingerprint {
+        let sivv_result = sivv(gray.as_ptr() as *mut c_uchar, iw as i32, ih as i32)?;
+        if !is_fingerprint(&sivv_result) {
+            // Early return if the image is not a fingerprint
+            return Ok(Minutiae::new(
+                Vec::new(),
+                iw,
+                ih,
+                NfiqResult {
+                    nfiq: NfiqQuality::Unknown,
+                    confidence: 0.0,
+                },
+                None, // No ROI in this case
+            ));
         }
     }
+    
 
     //get the finger print center
-    let get_center = get_center.unwrap_or(false);
 
     let roi = if get_center {
         let center =
@@ -440,7 +438,7 @@ pub fn extract_minutiae(
                 }
             })
             .collect();
-        Minutiae::new(minutiae_vec, iw, ih, quality, Some(roi))
+        Minutiae::new(minutiae_vec, iw, ih, quality, roi)
     };
 
     // 4) Free C allocations we no longer need -------------------------------
@@ -481,6 +479,8 @@ pub fn load_iso_19794_2_2005(template_bytes: &[u8]) -> Result<Minutiae, NbisErro
 #[uniffi::export]
 pub fn extract_minutiae_from_image_file(
     path: &str,
+    get_center: bool,
+    check_is_fingerprint: bool,
     ppi: Option<f64>,
 ) -> Result<Minutiae, NbisError> {
     // Read the file bytes
@@ -488,7 +488,7 @@ pub fn extract_minutiae_from_image_file(
         std::fs::read(path).map_err(|_| NbisError::FileReadError(path.to_string()))?;
 
     // Call the main extraction function
-    extract_minutiae(&image_bytes, ppi)
+    extract_minutiae(&image_bytes, get_center, check_is_fingerprint, ppi)
 }
 
 /// Annotates a fingerprint image with its extracted minutiae.
@@ -519,7 +519,7 @@ pub fn annotate_minutiae(
         return Err(NbisError::InvalidQuality(quality));
     }
 
-    let minutiae = extract_minutiae(image, ppi)?;
+    let minutiae = extract_minutiae(image, false, false, ppi)?;
 
     // Filter minutiae based on quality
     let minutiae: Vec<Arc<Minutia>> = minutiae
