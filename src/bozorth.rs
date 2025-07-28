@@ -8,7 +8,7 @@ use ffi::{
 };
 
 /// Idiomatic Rust container for a minutiae set
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct MinutiaeSet {
     pub xs: Vec<i32>,
     pub ys: Vec<i32>,

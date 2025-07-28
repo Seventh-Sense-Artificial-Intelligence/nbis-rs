@@ -48,7 +48,6 @@ impl Minutiae {
         let _lock = BOZORTH_MUTEX.lock().unwrap();
         let p = to_nist_xyt_set(self);
         let g = to_nist_xyt_set(other);
-        //println!("Matching {} vs {}", p.xs.len(), g.xs.len());
         let score = bz_match_score(&p, &g);
         // #define QQ_SIZE 4000
         // #define QQ_OVERFLOW_SCORE QQ_SIZE

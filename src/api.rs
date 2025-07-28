@@ -613,9 +613,9 @@ mod tests {
         let p1_2 = fs::read("test_data/p1/p1_2.png").unwrap();
         let p1_3 = fs::read("test_data/p1/p1_3.png").unwrap();
 
-        let res1 = extract_minutiae(&p_1, None).unwrap();
-        let res2 = extract_minutiae(&p1_2, None).unwrap();
-        let res3 = extract_minutiae(&p1_3, None).unwrap();
+        let res1 = extract_minutiae(&p_1, false, false, None).unwrap();
+        let res2 = extract_minutiae(&p1_2, false, false, None).unwrap();
+        let res3 = extract_minutiae(&p1_3, false, false, None).unwrap();
         let score1 = res1.compare(&res2);
         let score2 = res1.compare(&res3);
         let score3 = res2.compare(&res3);
@@ -636,9 +636,9 @@ mod tests {
         let p2_2 = fs::read("test_data/p2/p2_2.png").unwrap();
         let p2_3 = fs::read("test_data/p2/p2_3.png").unwrap();
 
-        let res4 = extract_minutiae(&p2_1, None).unwrap();
-        let res5 = extract_minutiae(&p2_2, None).unwrap();
-        let res6 = extract_minutiae(&p2_3, None).unwrap();
+        let res4 = extract_minutiae(&p2_1, false, false, None).unwrap();
+        let res5 = extract_minutiae(&p2_2, false, false, None).unwrap();
+        let res6 = extract_minutiae(&p2_3, false, false, None).unwrap();
         let score4 = res4.compare(&res5);
         let score5 = res4.compare(&res6);
         let score6 = res5.compare(&res6);
@@ -678,7 +678,7 @@ mod tests {
     #[test]
     fn test_encode_to_iso() {
         let bryanc_1 = fs::read("test_data/p1/p1_1.png").unwrap();
-        let res = extract_minutiae(&bryanc_1, None).unwrap();
+        let res = extract_minutiae(&bryanc_1, false, false, None).unwrap();
         let encoded = res.to_iso_19794_2_2005(0.0);
         assert!(!encoded.is_empty(), "Encoded ISO data should not be empty");
 
@@ -749,14 +749,38 @@ mod tests {
         assert_eq!(
             many_minutiae_decoded.inner.len(),
             DEFAULT_BOZORTH_MINUTIAE,
-            "Decoded minutiae count should be capped at 255"
+             "{}", &format!("Decoded minutiae count should be capped at {DEFAULT_BOZORTH_MINUTIAE}")
         );
+
+        // Check if the match score before and after encoding is the same
+        let bryanc_1 = fs::read("test_data/p1/p1_1.png").unwrap();
+        let bryanc_2 = fs::read("test_data/p1/p1_2.png").unwrap();
+        let r1 = extract_minutiae(&bryanc_1, false, false, None).unwrap();
+        let r2 = extract_minutiae(&bryanc_2, false, false, None).unwrap();
+        let e1 = r1.to_iso_19794_2_2005(0.0);
+        let e2 = r2.to_iso_19794_2_2005(0.0);
+        let reloaded_e1 = load_iso_19794_2_2005(&e1).unwrap();
+        let reloaded_e2 = load_iso_19794_2_2005(&e2).unwrap();
+
+        let s1 = r1.compare(&r2);
+        let s2 = r1.compare(&reloaded_e2);
+        let s3 = reloaded_e1.compare(&r2);
+        let s4 = reloaded_e1.compare(&reloaded_e2);
+
+        // Decode (Boolean, Boolean) as if the template was loaded from a file
+        assert_eq!(r1.inner.len(), reloaded_e1.inner.len(), "Minutiae count should match after encoding");
+        // println!("r1 len: {}, reloaded_e1 len: {}", r1.inner.len(), reloaded_e1.inner.len());
+        assert_eq!(s1, s2, "Match score should be the same for (False, False) vs (False True)");
+        assert_eq!(s1, s3, "Match score should be the same for (False, False) vs (True False)");
+        assert_eq!(s2, s4, "Match score should be the same for (False, True) vs (True True)");
+        assert_eq!(s3, s4, "Match score should be the same for (True, False) vs (True True)");
+        assert_eq!(s1, s4, "Match score should be the same for (False, False) vs (True True)");
     }
 
     #[test]
     fn test_nfiq() {
         let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
-        let res = extract_minutiae(&p1_1, None).unwrap();
+        let res = extract_minutiae(&p1_1, false, false, None).unwrap();
         assert!(
             (0.0..=1.0).contains(&res.quality().confidence),
             "Confidence should be between 0.0 and 1.0"
@@ -769,7 +793,7 @@ mod tests {
 
         // Test a non-fingerprint image
         let random_image = fs::read("test_data/negative/landscape.jpg").unwrap();
-        let res2 = extract_minutiae(&random_image, None).unwrap();
+        let res2 = extract_minutiae(&random_image, false, false, None).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
             res2.quality().nfiq == NfiqQuality::Unknown,
@@ -778,7 +802,7 @@ mod tests {
 
         // Test a non-fingerprint image
         let random_image = fs::read("test_data/negative/face.jpeg").unwrap();
-        let res2 = extract_minutiae(&random_image, None).unwrap();
+        let res2 = extract_minutiae(&random_image, false, false, None).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
             res2.quality().nfiq == NfiqQuality::Unknown,
@@ -789,7 +813,7 @@ mod tests {
     #[test]
     fn test_negative() {
         //Try to extract minutae from a file that is not an image
-        let res1 = extract_minutiae_from_image_file("build.rs", None);
+        let res1 = extract_minutiae_from_image_file("build.rs", false, false, None);
 
         // Check if the result is an error
         assert!(res1.is_err(), "Expected an error but got Ok");
@@ -803,7 +827,7 @@ mod tests {
         }
 
         //Try to extract minutae from a file that does not exist
-        let res2 = extract_minutiae_from_image_file("test_data/negative/x.png", None);
+        let res2 = extract_minutiae_from_image_file("test_data/negative/x.png", false, false, None);
 
         // Check if the result is an error
         assert!(res2.is_err(), "Expected an error but got Ok");
@@ -827,8 +851,8 @@ mod tests {
         // Test with a face image
         let n_2 = fs::read("test_data/negative/varun_square.png").unwrap();
 
-        let res1_n_2 = extract_minutiae(&n_2, None).unwrap();
-        let res2_n_2 = extract_minutiae(&n_2, None).unwrap();
+        let res1_n_2 = extract_minutiae(&n_2, false, false, None).unwrap();
+        let res2_n_2 = extract_minutiae(&n_2, false, false, None).unwrap();
         let score_n_2 = res1_n_2.compare(&res2_n_2);
         assert_eq!(score_n_2, 0);
     }
@@ -836,7 +860,7 @@ mod tests {
     #[test]
     fn test_roi() {
         let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
-        let res = extract_minutiae(&p1_1, None).unwrap();
+        let res = extract_minutiae(&p1_1, false, false, None).unwrap();
         assert!(res.roi().is_some(), "Expected ROI to be present");
         let roi = res.roi().unwrap();
 

@@ -13,7 +13,7 @@ Next, in the root directory, activate the virtual environment and install the wh
 
 ```bash
 source ./.venv/bin/activate
-pip install ./dist/nbis_py-0.1.2-py3-none-manylinux_2_34_x86_64.whl
+pip install ./dist/nbis_py-0.1.2-py3-none-manylinux_2_38_x86_64.whl
 ```
 
 Next, change the directory to the test folder:
