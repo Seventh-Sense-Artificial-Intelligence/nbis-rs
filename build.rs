@@ -224,8 +224,7 @@ fn main() {
 
     if is_android {
         let ocv_header_path = dst.join("build/opencv_install/include");
-        sivv_cpp
-            .include(ocv_header_path.join("opencv4"));
+        sivv_cpp.include(ocv_header_path.join("opencv4"));
     }
 
     sivv_cpp.compile("sivv");
