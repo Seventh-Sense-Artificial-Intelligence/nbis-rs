@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
 use crate::{
-    api::NfiqResult, bozorth::MinutiaeSet, consts::NUM_DIRECTIONS, ffi::DEFAULT_BOZORTH_MINUTIAE,
-    Minutia, MinutiaKind, Minutiae, NbisError, NfiqQuality,
+    bozorth::MinutiaeSet, consts::NUM_DIRECTIONS, ffi::DEFAULT_BOZORTH_MINUTIAE,
+    structs::NfiqQuality, structs::NfiqResult, Minutia, MinutiaKind, Minutiae, NbisError,
 };
 
 /// Quantise an angle (degrees) into the 8-bit ISO/IEC 19794-2 orientation unit.

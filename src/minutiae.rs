@@ -1,8 +1,8 @@
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
-use crate::api::{NfiqResult, ROI};
 use crate::minutia::Minutia;
+use crate::structs::{NfiqResult, ROI};
 use crate::{bozorth::bz_match_score, encoding::to_nist_xyt_set};
 /// A set of minutiae extracted from a fingerprint image.
 #[derive(Debug, Clone, uniffi::Object)]
