@@ -91,11 +91,15 @@ fn main() {
         .include("ext/nbis/mindtct/include")
         .include("ext/nbis/commonbis/include")
         .include("ext/nbis/imgtools/include")
-        .file("ext/sys_time/time.cpp")
-        .include("ext/sys_time")
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         ;
+
+    if is_windows {
+        nfiq_cc
+            .file("ext/sys_time/time.cpp")
+            .include("ext/sys_time");
+    }
 
     nfiq_cc.compile("nfiq");
 
@@ -108,13 +112,17 @@ fn main() {
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_io.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_sort.c")
         .include("ext/nbis/commonbis/include")
-        .file("ext/sys_time/time.cpp")
-        .include("ext/sys_time")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth_glue.c")
         .include("ext/nbis/bozorth/include") // to find bozorth.h
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         ;
+
+    if is_windows {
+        bozorth_cc
+            .file("ext/sys_time/time.cpp")
+            .include("ext/sys_time");
+    }
 
     bozorth_cc.compile("bozorth");
 
@@ -148,8 +156,6 @@ fn main() {
         .file("ext/nbis/mindtct/src/lib/mindtct/maps.c")
         .file("ext/nbis/mindtct/src/lib/mindtct/xytreps.c")
         .file("ext/nbis/mindtct/src/lib/mindtct/getmin.c")
-        .file("ext/sys_time/time.cpp")
-        .include("ext/sys_time")
         .include("ext/nbis/mindtct/include") // to find bozorth.h
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
@@ -203,14 +209,18 @@ fn main() {
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
         .include(dst.join("include/opencv4"))
-        .file("ext/sys_time/time.cpp")
-        .include("ext/sys_time")
         // Additional includes for Android
         .include(dst.join("build/opencv_install/sdk/native/jni/include"))
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         .flag_if_supported("-Wno-everything") // extra if using
         ;
+
+    if is_windows {
+        sivv_cpp
+            .file("ext/sys_time/time.cpp")
+            .include("ext/sys_time");
+    }
 
     sivv_cpp.compile("sivv");
 

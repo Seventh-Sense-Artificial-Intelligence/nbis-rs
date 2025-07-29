@@ -44,9 +44,9 @@ of the software.
 
 #ifndef _UTIL_H
 #define _UTIL_H
-
+#include <time.h>
 /* UPDATED: 03/15/2005 by MDG */
-#ifdef __MSYS__
+#ifndef _WIN32
 #include <sys/time.h>
 #else
 #include "sys/times.h"
