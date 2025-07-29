@@ -21,6 +21,7 @@ fn main() {
     let target = env::var("TARGET").unwrap_or_default();
     let is_android = target.contains("android");
     let is_linux = target.contains("linux") && !target.contains("android");
+    let is_windows = target.contains("windows");
 
     // ---- CMake for OpenCV ----
     let mut cmake = cmake::Config::new("ext/opencv-4.10.0");
@@ -61,11 +62,13 @@ fn main() {
             );
     }
 
-    cc::Build::new()
-        .file("ext/nbis/nfiq/src/lib/nfiq/nfiq.c")
+    let mut nfiq_cc = cc::Build::new();
+    nfiq_cc.file("ext/nbis/nfiq/src/lib/nfiq/nfiq.c")
         .file("ext/nbis/nfiq/src/lib/nfiq/nfiqgbls.c")
         .file("ext/nbis/nfiq/src/lib/nfiq/nfiqread.c")
         .file("ext/nbis/nfiq/src/lib/nfiq/znorm.c")
+        .file("ext/nbis/commonbis/src/lib/util/syserr.c")
+        .file("ext/nbis/commonbis/src/lib/util/fatalerr.c")
         .file("ext/nbis/commonbis/src/lib/util/memalloc.c")
         .file("ext/nbis/commonbis/src/lib/util/ssxstats.c")
         .file("ext/nbis/commonbis/src/lib/ioutil/dataio.c")
@@ -90,9 +93,18 @@ fn main() {
         .include("ext/nbis/imgtools/include")
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .compile("nfiq");
+        ;
 
-    cc::Build::new()
+    if is_windows {
+        nfiq_cc
+            .file("ext/sys_time/time.cpp")
+            .include("ext/sys_time");
+    }
+
+    nfiq_cc.compile("nfiq");
+
+    let mut bozorth_cc = cc::Build::new();
+    bozorth_cc
         .file("ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_alloc.c")
         .file("ext/nbis/bozorth/src/lib/bozorth3/bz_drvrs.c")
@@ -104,9 +116,18 @@ fn main() {
         .include("ext/nbis/bozorth/include") // to find bozorth.h
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .compile("bozorth");
+        ;
 
-    cc::Build::new()
+    if is_windows {
+        bozorth_cc
+            .file("ext/sys_time/time.cpp")
+            .include("ext/sys_time");
+    }
+
+    bozorth_cc.compile("bozorth");
+
+    let mut mindtct_cc = cc::Build::new();
+    mindtct_cc
         .file("ext/nbis/mindtct/src/lib/mindtct/log.c")
         .file("ext/nbis/mindtct/src/lib/mindtct/line.c")
         .file("ext/nbis/mindtct/src/lib/mindtct/contour.c")
@@ -138,7 +159,9 @@ fn main() {
         .include("ext/nbis/mindtct/include") // to find bozorth.h
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        .compile("mindtct");
+        ;
+
+    mindtct_cc.compile("mindtct");
 
     let dst = cmake
         .define("BUILD_SHARED_LIBS", "OFF")
@@ -174,13 +197,12 @@ fn main() {
         .define("BUILD_TESTS", "OFF")
         .define("BUILD_ZLIB", "OFF")
         .define("BUILD_PERF_TESTS", "OFF")
+        .define("OPENCV_INCLUDE_INSTALL_PATH", "include/opencv4")
         .define("CMAKE_CXX_STANDARD", "14")
         .build();
 
-    // Print dst as a warning for the user
-    //eprintln!("OpenCV build directory: {}", dst.display());
-
-    cc::Build::new()
+    let mut sivv_cpp = cc::Build::new();
+    sivv_cpp
         .cpp(true)
         .flag("-std=c++11")
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
@@ -192,7 +214,20 @@ fn main() {
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         .flag_if_supported("-Wno-everything") // extra if using
-        .compile("sivv");
+        ;
+
+    if is_windows {
+        sivv_cpp
+            .file("ext/sys_time/time.cpp")
+            .include("ext/sys_time");
+    }
+
+    if is_android {
+        let ocv_header_path = dst.join("build/opencv_install/include");
+        sivv_cpp.include(ocv_header_path.join("opencv4"));
+    }
+
+    sivv_cpp.compile("sivv");
 
     if is_android || is_linux {
         let opencv_lib_dir = if is_android {
@@ -212,8 +247,19 @@ fn main() {
         println!("cargo:rustc-link-search=native={}/lib", dst.display());
     }
 
-    println!("cargo:rustc-link-lib=static=opencv_imgproc");
-    println!("cargo:rustc-link-lib=static=opencv_core");
+    if !is_windows {
+        println!("cargo:rustc-link-lib=static=opencv_imgproc");
+        println!("cargo:rustc-link-lib=static=opencv_core");
+    } else {
+        println!("cargo:rustc-link-search=native=C:/msys64/mingw64/lib");
+        println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
+        println!("cargo:rustc-link-lib=static=opencv_imgproc4100");
+        println!("cargo:rustc-link-lib=static=opencv_core4100");
+        println!("cargo:rustc-link-lib=static=openblas");
+        println!("cargo:rustc-link-lib=static=gomp");
+        println!("cargo:rustc-link-lib=static=stdc++");
+    }
+
     println!("cargo:rustc-link-lib=z");
 
     if is_android {

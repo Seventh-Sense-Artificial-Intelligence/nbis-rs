@@ -762,7 +762,6 @@ dependencies = [
  "cmake",
  "image",
  "imageproc",
- "libc",
  "once_cell",
  "thiserror 2.0.12",
  "uniffi",

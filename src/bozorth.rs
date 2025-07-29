@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use crate::ffi::{self, ensure_bozorth_inited};
+use crate::ffi::{self};
 
 use ffi::{
     xyt_struct,           // Bozorth input layout
@@ -38,7 +38,6 @@ impl MinutiaeSet {
 
 /// Safe wrapper around the C implementation.
 pub(crate) fn bz_match_score(probe: &MinutiaeSet, gallery: &MinutiaeSet) -> i32 {
-    ensure_bozorth_inited();
     let p_c = probe.to_c_struct();
     let g_c = gallery.to_c_struct();
     unsafe { ffi::bozorth_main(&p_c, &g_c) }

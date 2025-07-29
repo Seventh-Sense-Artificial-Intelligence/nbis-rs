@@ -5,37 +5,7 @@
     non_upper_case_globals,
     clippy::upper_case_acronyms
 )]
-use libc::FILE;
 use std::os::raw::{c_char, c_double, c_int, c_uchar, c_void};
-use std::sync::Once;
-
-/* -----------------------------------------------------------------------
-libc’s stderr — linker name depends on platform
--------------------------------------------------------------------- */
-extern "C" {
-    #[cfg_attr(any(target_os = "macos", target_os = "ios"), link_name = "__stderrp")]
-    #[cfg_attr(not(any(target_os = "macos", target_os = "ios")), link_name = "stderr")]
-    static mut libc_stderr: *mut FILE;
-}
-
-extern "C" {
-    // declared in bozorth3.c
-    static mut errorfp: *mut libc::FILE;
-}
-
-static INIT_BOZORTH: Once = Once::new();
-
-#[inline]
-pub(crate) fn ensure_bozorth_inited() {
-    // SAFETY: we’re the only code touching `errorfp`, and we only write stderr
-    unsafe {
-        INIT_BOZORTH.call_once(|| {
-            if errorfp.is_null() {
-                errorfp = libc_stderr; // ← core fix
-            }
-        });
-    }
-}
 
 pub const DEFAULT_BOZORTH_MINUTIAE: usize = 150;
 pub const MAX_BOZORTH_MINUTIAE: usize = 200; // <-- match bozorth.h
