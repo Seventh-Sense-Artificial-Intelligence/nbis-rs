@@ -222,6 +222,12 @@ fn main() {
             .include("ext/sys_time");
     }
 
+    if is_android {
+        let ocv_header_path = dst.join("build/opencv_install/include");
+        sivv_cpp
+            .include(ocv_header_path.join("opencv4"));
+    }
+
     sivv_cpp.compile("sivv");
 
     if is_android || is_linux {
