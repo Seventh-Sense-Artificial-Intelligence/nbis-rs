@@ -55,7 +55,17 @@ impl Minutiae {
         if score == 4000 {
             0 // Just return 0 for overflow
         } else {
-            score // Return the actual score
+            let score_opposite = bz_match_score(&g, &p);
+            if score_opposite == 4000 {
+                0 // Return 0 for overflow in the opposite direction
+            } else {
+                // Return the maximum of the two scores
+                if score > score_opposite {
+                    score
+                } else {
+                    score_opposite
+                }
+            }
         }
     }
 

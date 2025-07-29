@@ -638,6 +638,10 @@ mod tests {
         let res2 = extract_minutiae(&p1_2, 0.0, false, false, None).unwrap();
         let res3 = extract_minutiae(&p1_3, 0.0, false, false, None).unwrap();
         let score1 = res1.compare(&res2);
+
+        // Test that score is symmetric
+        assert_eq!(score1, res2.compare(&res1), "Scores should be symmetric");
+
         let score2 = res1.compare(&res3);
         let score3 = res2.compare(&res3);
         assert!(
