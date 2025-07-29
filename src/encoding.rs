@@ -75,21 +75,12 @@ fn nist_xyt(minutiae: &Minutiae, minutia: &Minutia) -> (i32, i32, i32) {
 /// Convert this result into a Bozorth‑ready [`MinutiaeSet`].
 pub(crate) fn to_nist_xyt_set(minutiae: &Minutiae) -> MinutiaeSet {
     // 1. Copy, sort by reliability (desc), truncate
-    let mut top = minutiae.inner.clone();
-    top.sort_by(|a, b| b.reliability.partial_cmp(&a.reliability).unwrap());
-    top.truncate(DEFAULT_BOZORTH_MINUTIAE); // what is used by bzprune
-        
-    
-    top.sort_by(|a, b| {
-        a.x.cmp(&b.x).then(a.y.cmp(&b.y))
-    });
+    let len = minutiae.inner.len();
+    let mut xs = Vec::with_capacity(len);
+    let mut ys = Vec::with_capacity(len);
+    let mut ts = Vec::with_capacity(len);
 
-    // 2. Convert to NIST XYT
-    let mut xs = Vec::with_capacity(top.len());
-    let mut ys = Vec::with_capacity(top.len());
-    let mut ts = Vec::with_capacity(top.len());
-
-    for m in &top {
+    for m in &minutiae.inner {
         let (ox, oy, ot) = nist_xyt(minutiae, m);
         xs.push(ox);
         ys.push(oy);
@@ -154,18 +145,12 @@ pub(crate) fn decode_minutia(bytes: &[u8; 6]) -> Minutia {
 ///
 /// # Arguments
 /// * `minutiae_obj` — the `Minutiae` object to convert.
-/// * `min_quality` — minimum quality threshold for minutiae to be included (0.0 to 1.0).
 ///
 /// Returns a `Vec<u8>` containing the ISO template bytes.
-pub fn to_iso_19794_2_2005(minutiae_obj: &Minutiae, min_quality: f64) -> Vec<u8> {
+pub fn to_iso_19794_2_2005(minutiae_obj: &Minutiae) -> Vec<u8> {
     // The maximum number of minutiae is DEFAULT_BOZORTH_MINUTIAE, so we can use u8 for the count.
     // therefore, first filter the top DEFAULT_BOZORTH_MINUTIAE minutiae by quality.
     let mut minutiae = minutiae_obj.inner.clone();
-
-    // If a minimum quality is specified, filter out minutiae below that quality.
-    if min_quality > 0.0 {
-        minutiae.retain(|m| m.reliability >= min_quality);
-    }
 
     if minutiae.len() > DEFAULT_BOZORTH_MINUTIAE {
         minutiae.sort_by(|a, b| {

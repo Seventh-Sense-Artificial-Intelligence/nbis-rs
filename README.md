@@ -27,17 +27,23 @@ Here's a simple example of how to use NBIS-rs in your project:
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use nbis;
     use nbis::Minutiae;
+    // Configuration for minimum minutiae quality
+    let min_minutiae_quality = 0.0; // No filtering on quality
+    let get_center = false; // We don't need the center of the fingerprint or roi for this example
+    let check_is_fingerprint = false; // We don't need to check if the image is a fingerprint for this example
+
 
     // Read the bytes from a file (you could also use nbis::extract_minutiae_from_image_file)
     // but here we just load the image bytes as image paths on mobile platforms can be tricky.
     let image_bytes = std::fs::read("test_data/p1/p1_1.png")?;
-    let minutiae_1 = nbis::extract_minutiae(&image_bytes, None)?;
+
+    let minutiae_1 = nbis::extract_minutiae(&image_bytes, min_minutiae_quality, get_center, check_is_fingerprint, None)?;
 
     let image_bytes = std::fs::read("test_data/p1/p1_2.png")?;
-    let minutiae_2 = nbis::extract_minutiae(&image_bytes, None)?;
+    let minutiae_2 = nbis::extract_minutiae(&image_bytes, min_minutiae_quality, get_center, check_is_fingerprint, None)?;
 
     let image_bytes = std::fs::read("test_data/p1/p1_3.png")?;
-    let minutiae_3 = nbis::extract_minutiae(&image_bytes, None)?;
+    let minutiae_3 = nbis::extract_minutiae(&image_bytes, min_minutiae_quality, get_center, check_is_fingerprint, None)?;
 
     // Compare the two sets of minutiae
     let score = minutiae_1.compare(&minutiae_2);
@@ -50,8 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Next we will demonstrate conversion to ISO/IEC 19794-2:2005 format
     // and back to a `Minutiae` object.
     // First, convert the minutiae to ISO template bytes
-    let minimum_minutia_quality = 0.0; // Set minimum quality to 0.0 for no filtering
-    let iso_template: Vec<u8> = minutiae_1.to_iso_19794_2_2005(minimum_minutia_quality);              
+    let iso_template: Vec<u8> = minutiae_1.to_iso_19794_2_2005();              
     // And load it back
     let minutiae_from_iso = nbis::load_iso_19794_2_2005(&iso_template)?;
     // Compare the original minutiae with the one loaded from ISO template
@@ -66,7 +71,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Finally we demonstrate loading from a file and comparing a negative match
-    let minutiae_4 = nbis::extract_minutiae_from_image_file("test_data/p2/p2_1.png", None)?;
+    let minutiae_4 = nbis::extract_minutiae_from_image_file("test_data/p2/p2_1.png", 
+        min_minutiae_quality, 
+        get_center,  
+        check_is_fingerprint, None)?;
     let score = minutiae_1.compare(&minutiae_4);
     assert!(score < 50, "Expected a low similarity score between p1_1 and p2_1");
 
