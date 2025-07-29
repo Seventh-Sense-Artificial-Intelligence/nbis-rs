@@ -387,9 +387,7 @@ static int * rtp[ ROT_SIZE_1 ];
 /* extern char * get_probe_filename( void ); */
 /* extern char * get_gallery_filename( void ); */
 
-
-
-
+FILE *errorfp = stderr;
 
 st = 1;
 edge_pair_index = 0;

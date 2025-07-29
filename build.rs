@@ -213,12 +213,6 @@ fn main() {
 
     sivv_cpp.compile("sivv");
 
-    if is_windows {
-        cc::Build::new()
-            .file("ext/sys_time/fakestderr.c")
-            .compile("fakestderr");
-    }
-
     if is_android || is_linux {
         use std::fs;
 
