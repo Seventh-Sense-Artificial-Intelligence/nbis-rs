@@ -6,24 +6,41 @@ from io import BytesIO
 
 # --- Fixtures ---
 
+# Shared extractor fixture
+@pytest.fixture(scope="session")
+def nbis_extractor():
+    settings = nbis.NbisExtractorSettings(
+        min_quality=0.2,
+        get_center=False,
+        check_fingerprint=False,
+        ppi=None
+    )
+    return nbis.new_nbis_extractor(settings)
+
+# Updated minutiae fixtures
 @pytest.fixture
-def minutiae_p1_1():
-    image_bytes = open("../../../test_data/p1/p1_1.png", "rb").read()
-    return nbis.extract_minutiae(image=image_bytes, ppi=None)
+def minutiae_p1_1(nbis_extractor):
+    with open("../../../test_data/p1/p1_1.png", "rb") as f:
+        image_bytes = f.read()
+    return nbis_extractor.extract_minutiae(image=image_bytes)
 
 @pytest.fixture
-def minutiae_p1_2():
-    image_bytes = open("../../../test_data/p1/p1_2.png", "rb").read()
-    return nbis.extract_minutiae(image=image_bytes, ppi=None)
+def minutiae_p1_2(nbis_extractor):
+    with open("../../../test_data/p1/p1_2.png", "rb") as f:
+        image_bytes = f.read()
+    return nbis_extractor.extract_minutiae(image=image_bytes)
 
 @pytest.fixture
-def minutiae_p1_3():
-    image_bytes = open("../../../test_data/p1/p1_3.png", "rb").read()
-    return nbis.extract_minutiae(image=image_bytes, ppi=None)
+def minutiae_p1_3(nbis_extractor):
+    with open("../../../test_data/p1/p1_3.png", "rb") as f:
+        image_bytes = f.read()
+    return nbis_extractor.extract_minutiae(image=image_bytes)
 
 @pytest.fixture
-def minutiae_p2_1():
-    return nbis.extract_minutiae_from_image_file("../../../test_data/p2/p2_1.png", ppi=None)
+def minutiae_p2_1(nbis_extractor):
+    with open("../../../test_data/p2/p2_1.png", "rb") as f:
+        image_bytes = f.read()
+    return nbis_extractor.extract_minutiae(image=image_bytes)
 
 # --- Tests ---
 
@@ -40,10 +57,10 @@ def test_similarity_within_class(minutiae_p1_1, minutiae_p1_2, minutiae_p1_3):
     assert score_1_3 > 50, "Expected high similarity between p1_1 and p1_3"
     assert score_2_3 > 50, "Expected high similarity between p1_2 and p1_3"
 
-def test_iso_template_round_trip(minutiae_p1_1):
+def test_iso_template_round_trip(nbis_extractor, minutiae_p1_1):
     # Set minimum quality to 0.0 for no filtering
-    iso_template = minutiae_p1_1.to_iso_19794_2_2005(0.0)
-    minutiae_loaded = nbis.load_iso_19794_2_2005(iso_template)
+    iso_template = minutiae_p1_1.to_iso_19794_2_2005()
+    minutiae_loaded = nbis_extractor.load_iso_19794_2_2005(iso_template)
 
     for original, loaded in zip(minutiae_p1_1.get(), minutiae_loaded.get()):
         assert original.x() == loaded.x()
@@ -72,13 +89,11 @@ def images_equal(img1: Image.Image, img2: Image.Image) -> bool:
     arr2 = np.array(img2)
     return np.array_equal(arr1, arr2)
 
-def test_annotated_image_matches_ground_truth():
+def test_annotated_image_matches_ground_truth(nbis_extractor):
     # This testcase will also cover `annotate_minutiae` which takes image bytes directly instead. 
     # Load the annotated image from the function (as bytes)
-    annotated_bytes = nbis.annotate_minutiae_from_image_file(
-        "../../../test_data/p1/p1_1.png",
-        ppi=None,
-        min_quality=None,
+    annotated_bytes = nbis_extractor.annotate_minutiae_from_image_file(
+        "../../../test_data/p1/p1_1.png"
     )
     
     # Convert returned bytes into a PIL Image
