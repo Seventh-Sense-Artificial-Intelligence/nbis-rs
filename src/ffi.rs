@@ -7,6 +7,7 @@
 )]
 use std::os::raw::{c_char, c_double, c_int, c_uchar, c_void};
 
+pub const DEFAULT_BOZORTH_MINUTIAE: usize = 150;
 pub const MAX_BOZORTH_MINUTIAE: usize = 200; // <-- match bozorth.h
                                              //pub const TOO_FEW_MINUTIAE: c_int = 2; // <-- match nfiq.h
                                              //pub const EMPTY_IMG: c_int = 1; // <-- match nfiq.h

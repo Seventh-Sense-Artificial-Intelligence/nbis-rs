@@ -1,8 +1,8 @@
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
-use crate::api::{NfiqResult, ROI};
 use crate::minutia::Minutia;
+use crate::structs::{NfiqResult, ROI};
 use crate::{bozorth::bz_match_score, encoding::to_nist_xyt_set};
 /// A set of minutiae extracted from a fingerprint image.
 #[derive(Debug, Clone, uniffi::Object)]
@@ -48,7 +48,6 @@ impl Minutiae {
         let _lock = BOZORTH_MUTEX.lock().unwrap();
         let p = to_nist_xyt_set(self);
         let g = to_nist_xyt_set(other);
-        //println!("Matching {} vs {}", p.xs.len(), g.xs.len());
         let score = bz_match_score(&p, &g);
         // #define QQ_SIZE 4000
         // #define QQ_OVERFLOW_SCORE QQ_SIZE
@@ -56,7 +55,17 @@ impl Minutiae {
         if score == 4000 {
             0 // Just return 0 for overflow
         } else {
-            score // Return the actual score
+            let score_opposite = bz_match_score(&g, &p);
+            if score_opposite == 4000 {
+                0 // Return 0 for overflow in the opposite direction
+            } else {
+                // Return the maximum of the two scores
+                if score > score_opposite {
+                    score
+                } else {
+                    score_opposite
+                }
+            }
         }
     }
 
@@ -69,8 +78,8 @@ impl Minutiae {
         self.inner.iter().cloned().map(Arc::new).collect()
     }
 
-    pub fn to_iso_19794_2_2005(&self, min_quality: f64) -> Vec<u8> {
-        crate::encoding::to_iso_19794_2_2005(self, min_quality)
+    pub fn to_iso_19794_2_2005(&self) -> Vec<u8> {
+        crate::encoding::to_iso_19794_2_2005(self)
     }
 
     /// Returns the ROI (Region of Interest) associated with these minutiae, if any.

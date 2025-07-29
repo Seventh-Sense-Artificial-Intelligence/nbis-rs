@@ -27,33 +27,43 @@ Here's a simple example of how to use NBIS-rs in your project:
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use nbis;
     use nbis::Minutiae;
+    use nbis::NbisExtractorSettings;
+    // Configuration for the NbisExtractor
+    let settings = NbisExtractorSettings {
+        min_quality: 0.0, // No filtering on quality
+        get_center: false, // We don't need the center of the fingerprint or roi for this example
+        check_fingerprint: false, // We don't need to check if the image is a fingerprint for this example
+        ppi: None, // No specific PPI, we will use the default
+    };
+
+    let extractor = nbis::NbisExtractor::new(settings);
 
     // Read the bytes from a file (you could also use nbis::extract_minutiae_from_image_file)
     // but here we just load the image bytes as image paths on mobile platforms can be tricky.
     let image_bytes = std::fs::read("test_data/p1/p1_1.png")?;
-    let minutiae_1 = nbis::extract_minutiae(&image_bytes, None)?;
+
+    let minutiae_1 = extractor.extract_minutiae(&image_bytes)?;
 
     let image_bytes = std::fs::read("test_data/p1/p1_2.png")?;
-    let minutiae_2 = nbis::extract_minutiae(&image_bytes, None)?;
+    let minutiae_2 = extractor.extract_minutiae(&image_bytes)?;
 
     let image_bytes = std::fs::read("test_data/p1/p1_3.png")?;
-    let minutiae_3 = nbis::extract_minutiae(&image_bytes, None)?;
+    let minutiae_3 = extractor.extract_minutiae(&image_bytes)?;
 
     // Compare the two sets of minutiae
     let score = minutiae_1.compare(&minutiae_2);
-    assert!(score > 50, "Expected a high similarity score between p1_1 and p1_2");
+    assert!(score > 35, "Expected a high similarity score between p1_1 and p1_2");
     let score = minutiae_1.compare(&minutiae_3);
-    assert!(score > 50, "Expected a high similarity score between p1_1 and p1_3");
+    assert!(score > 35, "Expected a high similarity score between p1_1 and p1_3");
     let score = minutiae_2.compare(&minutiae_3);
-    assert!(score > 50, "Expected a high similarity score between p1_2 and p1_3");
+    assert!(score > 35, "Expected a high similarity score between p1_2 and p1_3");
 
     // Next we will demonstrate conversion to ISO/IEC 19794-2:2005 format
     // and back to a `Minutiae` object.
     // First, convert the minutiae to ISO template bytes
-    let minimum_minutia_quality = 0.0; // Set minimum quality to 0.0 for no filtering
-    let iso_template: Vec<u8> = minutiae_1.to_iso_19794_2_2005(minimum_minutia_quality);              
+    let iso_template: Vec<u8> = minutiae_1.to_iso_19794_2_2005();              
     // And load it back
-    let minutiae_from_iso = nbis::load_iso_19794_2_2005(&iso_template)?;
+    let minutiae_from_iso = extractor.load_iso_19794_2_2005(&iso_template)?;
     // Compare the original minutiae with the one loaded from ISO template
     for (a, b) in minutiae_from_iso.get().iter().zip(minutiae_1.get().iter()) {
         assert_eq!(a.x(), b.x());
@@ -66,9 +76,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Finally we demonstrate loading from a file and comparing a negative match
-    let minutiae_4 = nbis::extract_minutiae_from_image_file("test_data/p2/p2_1.png", None)?;
+    let minutiae_4 = extractor.extract_minutiae_from_image_file("test_data/p2/p2_1.png")?;
     let score = minutiae_1.compare(&minutiae_4);
-    assert!(score < 50, "Expected a low similarity score between p1_1 and p2_1");
+    assert!(score < 35, "Expected a low similarity score between p1_1 and p2_1");
 
     Ok(())
 }

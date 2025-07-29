@@ -4,6 +4,15 @@ set -e
 # Create dist folder if it doesn't exist
 mkdir -p dist
 
+if [ -f /etc/os-release ] && grep -qiE 'ubuntu|debian' /etc/os-release; then
+  echo "Detected Debian/Ubuntu; installing required packages..."
+  sudo apt-get update
+  sudo apt-get install -y openjdk-17-jdk
+else
+  echo "This script is designed for Debian/Ubuntu systems."
+  exit 1
+fi
+
 # Set path to jniLibs target dir
 JNILIBS_DIR="bindings/android/app/src/main/jniLibs"
 
@@ -46,6 +55,16 @@ for TARGET in "${TARGETS[@]}"; do
   LIB_NAME="libnbis.so"
   cp "target/android/$ABI/$LIB_NAME" "$JNILIBS_DIR/$ABI/"
 done
+
+HOST_OS=$(uname -s)
+if [ "$HOST_OS" = "Darwin" ]; then
+  PREBUILT="darwin-x86_64"
+else
+  PREBUILT="linux-x86_64"
+fi
+
+cp $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$PREBUILT/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so bindings/android/app/src/main/jniLibs/armeabi-v7a/
+cp $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$PREBUILT/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so bindings/android/app/src/main/jniLibs/arm64-v8a/
 
 echo "✅ Done. .so files copied to $JNILIBS_DIR"
 
