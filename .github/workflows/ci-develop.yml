@@ -120,6 +120,20 @@ jobs:
         name: nbis-sdk.aar
         path: dist/*.aar
 
+  test-android-aar:
+    name: Test android aar file
+    runs-on: macOS
+    needs: [build-android-bindings]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download built aar file
+      uses: actions/download-artifact@v4
+      with:
+        name: nbis-sdk.aar
+        path: bindings/android/app/libs
+    
      
 
 
