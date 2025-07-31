@@ -3,11 +3,11 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-group = "ai.seventhsense.sdk"
+group = "com.example.test"
 version = "1.0.0"
 
 android {
-    namespace = "ai.seventhsense.sdk.nbis"
+    namespace = "com.example.test"
     compileSdk = 34
 
     defaultConfig {
@@ -31,10 +31,14 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+   sourceSets["main"].jniLibs.srcDirs("libs/jniLibs")
 }
 
 dependencies {
-    implementation(libs.jna)
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
+    // implementation(libs.jna)
+    // Add JNA dependency for native access
+    implementation("net.java.dev.jna:jna:5.13.0@aar")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

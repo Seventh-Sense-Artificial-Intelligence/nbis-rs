@@ -2,7 +2,7 @@ name: nbis build develop
 
 on:
   push:
-    branches: [update_ci]
+    branches: [develop]
   pull_request:
     branches: [develop]
 
@@ -119,5 +119,7 @@ jobs:
       with:
         name: nbis-sdk.aar
         path: dist/*.aar
+
+     
 
 

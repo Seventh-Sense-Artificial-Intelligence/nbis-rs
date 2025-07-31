@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Nbis"
+rootProject.name = "test-aar-nbis"
 include(":app")
  
