@@ -1,4 +1,7 @@
 use std::env;
+use std::fs;
+use std::io;
+use std::path::Path;
 
 fn android_abi_from_target(target: &str) -> Option<&'static str> {
     if target.contains("aarch64") {
@@ -161,6 +164,12 @@ fn main() {
         .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
         ;
 
+    if is_windows {
+        mindtct_cc
+            .file("ext/sys_time/time.cpp")
+            .include("ext/sys_time");
+    }
+
     mindtct_cc.compile("mindtct");
 
     let dst = cmake
@@ -251,6 +260,15 @@ fn main() {
         println!("cargo:rustc-link-lib=static=opencv_imgproc");
         println!("cargo:rustc-link-lib=static=opencv_core");
     } else {
+        let lib_src_dir_str = format!("{}/build/lib", &dst.display());
+        let lib_src_dir = Path::new(&lib_src_dir_str);
+        let lib_dst_dir = Path::new("ext/opencv_libs");
+
+        // Copy the directory
+        if let Err(e) = copy_dir_recursive(lib_src_dir, lib_dst_dir) {
+            panic!("Failed to copy directory: {e}");
+        }
+
         println!("cargo:rustc-link-search=native=C:/msys64/mingw64/lib");
         println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
         println!("cargo:rustc-link-lib=static=opencv_imgproc4100");
@@ -269,4 +287,28 @@ fn main() {
     // Automatically re-run build.rs if these files change
     println!("cargo:rerun-if-changed=ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c");
     println!("cargo:rerun-if-changed=ext/nbis/bozorth/include");
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
+    // Create the destination directory if it doesn't exist
+    if !dst.exists() {
+        fs::create_dir_all(dst)?;
+    }
+
+    // Read the source directory
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            // Recursively copy subdirectories
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            // Copy files
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+
+    Ok(())
 }
