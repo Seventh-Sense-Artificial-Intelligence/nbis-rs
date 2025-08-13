@@ -36,7 +36,7 @@ fn build_nfiq2() -> PathBuf {
     let target = env::var("TARGET").unwrap_or_default();
     let is_android = target.contains("android");
     let is_linux = target.contains("linux") && !target.contains("android");
-    let is_windows = target.contains("windows");
+    //let is_windows = target.contains("windows");
     let is_macos = target.contains("apple") || target.contains("darwin");
     copy_nfiq2_dirs();
 
@@ -109,13 +109,7 @@ fn build_nfiq2() -> PathBuf {
         );
     }
 
-    // if you built NFIQ2 via cmake earlier in the same build.rs, you'd also:
     println!("cargo:rustc-link-lib=static=nfiq2");
-    println!("cargo:rustc-link-lib=static=opencv_ml");
-    println!("cargo:rustc-link-lib=static=opencv_imgcodecs");
-    println!("cargo:rustc-link-lib=static=opencv_imgproc");
-    println!("cargo:rustc-link-lib=static=opencv_core");
-    println!("cargo:rustc-link-lib=static=FRFXLL_static");
 
     if is_linux {
         println!("cargo:rustc-link-lib=dylib=stdc++");
@@ -278,8 +272,9 @@ fn main() {
     }
 
     if is_android {
-        let ocv_header_path = dst.join("build/opencv_install/include");
-        sivv_cpp.include(ocv_header_path.join("opencv4"));
+        // dst: /home/coder/nbis-rs/target/aarch64-linux-android/release/build/nbis-rs-0311d84ca63bc87e/out
+        let ocv_header_path = dst.join("build/install_staging/nfiq2/sdk/native/jni/include");
+        sivv_cpp.include(ocv_header_path);
     }
 
     sivv_cpp.compile("sivv");
@@ -303,9 +298,7 @@ fn main() {
     }
 
     if !is_windows {
-        //println!("cargo:rustc-link-lib=static=nbis");
         println!("cargo:rustc-link-lib=static=opencv_imgproc");
-        println!("cargo:rustc-link-lib=static=opencv_core");
         println!("cargo:rustc-link-lib=static=opencv_ml");
         println!("cargo:rustc-link-lib=static=opencv_imgcodecs");
         println!("cargo:rustc-link-lib=static=opencv_imgproc");
@@ -331,10 +324,6 @@ fn main() {
     }
 
     println!("cargo:rustc-link-lib=z");
-
-    if is_android {
-        println!("cargo:rustc-link-lib=c++_shared");
-    }
 
     // Automatically re-run build.rs if these files change
     println!("cargo:rerun-if-changed=ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c");
