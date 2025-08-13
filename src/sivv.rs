@@ -3,7 +3,7 @@ use std::ffi::CStr;
 use std::os::raw::{c_int, c_uchar};
 
 use crate::errors::NbisError;
-use crate::ffi::{sivv_ffi_free_bytes, sivv_ffi_from_bytes, CPoint2i};
+use crate::ffi_nbis::{sivv_ffi_free_bytes, sivv_ffi_from_bytes, CPoint2i};
 use crate::structs::SIVVResult;
 
 pub(crate) fn is_fingerprint(result: &SIVVResult) -> bool {
@@ -34,7 +34,7 @@ pub(crate) fn find_fingerprint_center(
 
     // Call the C function
     let result = unsafe {
-        crate::ffi::find_fingerprint_center_morph_c(
+        crate::ffi_nbis::find_fingerprint_center_morph_c(
             data,
             width,
             height,

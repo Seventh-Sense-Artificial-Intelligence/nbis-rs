@@ -12,14 +12,14 @@ use crate::{
     NbisError,
 };
 
-#[derive(Debug, uniffi::Record)]
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct Nfiq2Value {
     pub name: String,
     pub value: f64,
 }
 
 /// Safe Rust view of the results
-#[derive(Debug, uniffi::Record)]
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct Nfiq2Result {
     pub score: u32,
     pub actionable: Vec<Nfiq2Value>,
@@ -36,7 +36,6 @@ unsafe impl Send for Nfiq2 {}
 unsafe impl Sync for Nfiq2 {}
 
 /// Construct a new wrapper, or Err if allocation/initialization fails.
-#[uniffi::export]
 pub fn new_nfiq2() -> Result<Nfiq2, NbisError> {
     let ptr = unsafe { nfiq2wrapper_create() };
     if ptr.is_null() {
@@ -46,7 +45,6 @@ pub fn new_nfiq2() -> Result<Nfiq2, NbisError> {
     }
 }
 
-#[uniffi::export]
 impl Nfiq2 {
     /// Compute quality. Mirrors your C API.
     pub fn compute(&self, image_bytes: &[u8]) -> Result<Nfiq2Result, NbisError> {

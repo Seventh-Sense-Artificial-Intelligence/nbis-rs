@@ -1,4 +1,7 @@
-use std::{io, env, fs, path::{Path, PathBuf}};
+use std::{
+    env, fs, io,
+    path::{Path, PathBuf},
+};
 
 fn android_abi_from_target(target: &str) -> Option<&'static str> {
     if target.contains("aarch64") {
@@ -142,47 +145,6 @@ fn main() {
 
     let dst = build_nfiq2();
     // dst: /home/coder/nbis-rs/target/release/build/nbis-rs-4685d910ce23e274/out
-
-    let mut nfiq_cc = cc::Build::new();
-    nfiq_cc.file("ext/nbis/nfiq/src/lib/nfiq/nfiq.c")
-        .file("ext/nbis/nfiq/src/lib/nfiq/nfiqgbls.c")
-        .file("ext/nbis/nfiq/src/lib/nfiq/nfiqread.c")
-        .file("ext/nbis/nfiq/src/lib/nfiq/znorm.c")
-        .file("ext/nbis/commonbis/src/lib/util/syserr.c")
-        .file("ext/nbis/commonbis/src/lib/util/fatalerr.c")
-        .file("ext/nbis/commonbis/src/lib/util/memalloc.c")
-        .file("ext/nbis/commonbis/src/lib/util/ssxstats.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/dataio.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/fileexst.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/filehead.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/fileroot.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/filesize.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/filetail.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/findfile.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/newext.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/readutil.c")
-        .file("ext/nbis/commonbis/src/lib/cblas/sgemv.c")
-        .file("ext/nbis/commonbis/src/lib/cblas/xerbla.c")
-        .file("ext/nbis/commonbis/src/lib/cblas/lsame.c")
-        .file("ext/nbis/pcasys/src/lib/mlp/runmlp.c")
-        .file("ext/nbis/pcasys/src/lib/mlp/acs.c")
-        .file("ext/nbis/pcasys/src/lib/mlp/mlpcla.c")
-        .include("ext/nbis/pcasys/include")
-        .include("ext/nbis/nfiq/include")
-        .include("ext/nbis/mindtct/include")
-        .include("ext/nbis/commonbis/include")
-        .include("ext/nbis/imgtools/include")
-        .define("NOVERBOSE", None) // you probably don’t want stdout spam
-        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        ;
-
-    if is_windows {
-        nfiq_cc
-            .file("ext/sys_time/time.cpp")
-            .include("ext/sys_time");
-    }
-
-    nfiq_cc.compile("nfiq");
 
     let mut bozorth_cc = cc::Build::new();
     bozorth_cc
