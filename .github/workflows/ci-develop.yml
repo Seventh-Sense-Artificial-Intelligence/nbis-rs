@@ -2,7 +2,7 @@ name: nbis build develop
 
 on:
   push:
-    branches: [feature-generate-python-binding-windows]
+    branches: [develop]
   pull_request:
     branches: [develop]
 
@@ -98,7 +98,7 @@ jobs:
         overwrite: true
 
   build-python-bindings-windows:
-    name: Build Python Wheel
+    name: Build Python Wheel Windows
     runs-on: Windows
     
     needs: [build-and-test]
