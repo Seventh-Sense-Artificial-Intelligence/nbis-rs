@@ -25,6 +25,7 @@ crate-type = ["lib", "cdylib"]
 name = "nbis" 
 
 [build-dependencies]
+walkdir = "2.5.0"
 cc = "1.2.29"
 cmake = "0.1"
 uniffi = { version = "0.29.3", features = ["build"] }

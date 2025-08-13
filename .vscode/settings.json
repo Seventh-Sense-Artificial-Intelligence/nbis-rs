@@ -61,7 +61,7 @@
         "variant": "cpp",
         "vector": "cpp",
         "algorithm": "cpp"
-    }
+    },
 
     // for Linux:
     "terminal.integrated.env.linux": {

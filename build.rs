@@ -1,4 +1,6 @@
-use std::env;
+use std::{env, fs, path::{Path, PathBuf}};
+
+use walkdir::WalkDir;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -15,6 +17,51 @@ fn android_abi_from_target(target: &str) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+fn copy_dir(source: &Path, dest: &Path) -> std::io::Result<()> {
+    // clear out any old files
+    if dest.exists() {
+        fs::remove_dir_all(dest)?;
+    }
+    // recreate root
+    fs::create_dir_all(dest)?;
+
+    for entry in WalkDir::new(source) {
+        let entry = entry?;
+        let rel_path: PathBuf = entry.path().strip_prefix(source).unwrap().into();
+        let dest_path = dest.join(&rel_path);
+
+        if entry.file_type().is_dir() {
+            fs::create_dir_all(&dest_path)?;
+        } else {
+            // make sure parent dir exists
+            if let Some(parent) = dest_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(entry.path(), &dest_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn copy_nfiq2_dirs() {
+    let source = Path::new("ext/opencv-4.10.0");
+    let dst = Path::new("ext/NFIQ2-2.3.0/opencv");
+    copy_dir(source, dst).expect("failed to copy OpenCV dir");
+
+    let source = Path::new("ext/FingerJetFXOSE");
+    let dst = Path::new("ext/NFIQ2-2.3.0/fingerjetfxose");
+    copy_dir(source, dst).expect("failed to copy FingerJetFXOSE dir");
+
+    let source = Path::new("ext/digestpp");
+    let dst = Path::new("ext/NFIQ2-2.3.0/digestpp");
+    copy_dir(source, dst).expect("failed to copy FingerJetFXOSE dir");
+
+    let source = Path::new("ext/libbiomeval-10.0");
+    let dst = Path::new("ext/NFIQ2-2.3.0/libbiomeval");
+    copy_dir(source, dst).expect("failed to copy libbiomeval-10.0 dir");
 }
 
 // build.rs
