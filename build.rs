@@ -125,7 +125,7 @@ fn build_nfiq2() -> PathBuf {
     if is_macos {
         println!("cargo:rustc-link-lib=framework=Accelerate");
         println!("cargo:rustc-link-lib=framework=OpenCL");
-        println!("cargo:rustc-link-lib=static=zlib");
+        //println!("cargo:rustc-link-lib=static=zlib");
     }
 
     dst
