@@ -14,4 +14,12 @@ pub enum NbisError {
     InvalidTemplate(String),
     #[error("Generic error: {0}")]
     GenericError(String),
+    #[error("Null context provided")]
+    Nfiq2NullContext,
+
+    #[error("Failed to create NFIQ2 object")]
+    Nfiq2CreateFailed,
+
+    #[error("NFIQ2 computation failed with error code: {0}")]
+    Nfiq2ComputeFailed(i32),
 }

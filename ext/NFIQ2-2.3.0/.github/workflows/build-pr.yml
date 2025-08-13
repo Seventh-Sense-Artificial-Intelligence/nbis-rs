@@ -1,0 +1,211 @@
+name: Build PR
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/**'
+      - '!.github/workflows/build-pr.yml'
+      - '.gitignore'
+      - '**.md'
+      - 'conformance/**'
+
+env:
+  CONFIGURATION: Release
+  BUILD_NFIQ2_CLI: ON
+
+jobs:
+  build:
+    name: Build Matrix
+
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+          # https://github.com/actions/virtual-environments
+          - { os: macOS-13, arch: x64, embed_rf: OFF }
+          - { os: macOS-12, arch: x64, embed_rf: OFF }
+          - { os: ubuntu-22.04, arch: x64, embed_rf: ON }
+          - { os: ubuntu-22.04, arch: x64, embed_rf: OFF }
+          - { os: ubuntu-20.04, arch: x64, embed_rf: OFF }
+          - { os: windows-2022, arch: x64, embed_rf: OFF }
+          - { os: windows-2022, arch: x86, embed_rf: OFF }
+          - { os: windows-2019, arch: x64, embed_rf: OFF }
+          - { os: windows-2019, arch: x86, embed_rf: OFF }
+
+    steps:
+    - name: Checkout Code and Submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    # The Mono framework on macOS GitHub Runners provides some really old and
+    # conflicting libraries at high precedence, so remove it.
+    - name: Remove Mono Framework (macOS)
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: sudo rm -rf /Library/Frameworks/Mono.framework
+
+    - name: Prepare for Package Cache (Windows)
+      if: ${{ runner.os == 'Windows' }}
+      shell: bash
+      run: |
+        mkdir -p "${VCPKG_INSTALLATION_ROOT}/bincache"
+        echo "VCPKG_DEFAULT_BINARY_CACHE=${VCPKG_INSTALLATION_ROOT}/bincache" >> ${GITHUB_ENV}
+
+    - name: Package Cache (Windows)
+      if: ${{ runner.os == 'Windows' }}
+      id: vcpkg-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+        key: pr-${{ matrix.config.os }}-${{ matrix.config.arch }}-vcpkg
+        restore-keys: |
+          pr-${{ matrix.config.os }}-${{ matrix.config.arch }}-vcpkg
+          ${{ matrix.config.os }}-${{ matrix.config.arch }}-vcpkg
+
+    - name: Install Packages (Linux)
+      if: ${{ runner.os == 'Linux' }}
+      shell: bash
+      run: |
+        sudo apt -y update
+        sudo apt -y install \
+            libdb++-dev \
+            libhwloc-dev \
+            libjbig-dev \
+            libjpeg-dev \
+            liblzma-dev \
+            libopenjp2-7-dev \
+            libpng-dev \
+            libsqlite3-dev \
+            libssl-dev \
+            libtiff-dev \
+            libwebp-dev \
+            libzstd-dev \
+            zlib1g-dev
+
+    - name: Install Packages (macOS)
+      if: ${{ runner.os == 'macOS' }}
+      shell: bash
+      run: |
+        HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_AUTO_UPDATE=1 \
+            HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install --quiet \
+            berkeley-db \
+            hwloc \
+            jpeg-turbo \
+            libpng \
+            libtiff \
+            openjpeg \
+            openssl \
+            sqlite \
+            zlib \
+            zstd
+
+    - name: Install Packages (Windows)
+      if: ${{ runner.os == 'Windows' }}
+      shell: bash
+      run: |
+        vcpkg install --recurse \
+          --triplet=${{ matrix.config.arch }}-windows-static \
+          berkeleydb \
+          hwloc \
+          libjpeg-turbo \
+          liblzma \
+          libpng \
+          openjpeg \
+          openssl \
+          sqlite3 \
+          tiff \
+          zlib \
+          zstd
+        # getopt is not static
+        vcpkg install --recurse \
+          --triplet=${{ matrix.config.arch }}-windows getopt
+
+    - name: Build Directory Cache
+      id: builddir-cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ github.workspace }}/build
+          !${{ github.workspace }}/build/nfir*
+          !${{ github.workspace }}/build/nfiq2api-prefix/src/nfiq2api-build/CMakeFiles/Nfiq2Api.dir/version.AppleClang.apple64.cpp.o*
+          !${{ github.workspace }}/build/nfiq2-prefix/src/nfiq2-build/CMakeFiles/nfiq2-static-lib.dir/src/nfiq2/version.cpp.o*
+        key: pr-${{ matrix.config.os }}-${{ matrix.config.arch }}-builddir-ocv410
+        restore-keys: |
+          pr-${{ matrix.config.os }}-${{ matrix.config.arch }}-builddir-ocv410
+          ${{ matrix.config.os }}-${{ matrix.config.arch }}-builddir-ocv410
+
+    - name: Get CMake Version
+      shell: bash
+      run: cmake --version
+
+    - name: Create Build Directory
+      if:  steps.builddir-cache.outputs.cache-hit != 'true'
+      run: cmake -E make_directory ${{ github.workspace }}/build
+
+    - name: Configure CMake (Single-config Generator)
+      if: ${{ runner.os != 'Windows' }}
+      shell: bash
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        cmake \
+            -DCMAKE_BUILD_TYPE="${CONFIGURATION}" \
+            -DBUILD_NFIQ2_CLI="${BUILD_NFIQ2_CLI}" \
+            -DEMBED_RANDOM_FOREST_PARAMETERS="${{ matrix.config.embed_rf }}" \
+            ${GITHUB_WORKSPACE}
+
+    - name: Configure CMake (Multi-config Generator)
+      if: ${{ runner.os == 'Windows' }}
+      shell: bash
+      env:
+        cmake_arch_flag: ${{ matrix.config.arch == 'x86' && 'Win32' || 'x64' }}
+      working-directory: ${{ github.workspace }}/build
+      run: |
+        cmake \
+            -A ${cmake_arch_flag} \
+            -DCMAKE_TOOLCHAIN_FILE="${VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET="${{ matrix.config.arch }}-windows-static" \
+            -DCMAKE_CONFIGURATION_TYPES="${CONFIGURATION}" \
+            -DVCPKG_VERBOSE=ON \
+            -DBUILD_NFIQ2_CLI="${BUILD_NFIQ2_CLI}" \
+            -DEMBED_RANDOM_FOREST_PARAMETERS="${{ matrix.config.embed_rf }}" \
+            -DOPENSSL_ROOT_DIR="${VCPKG_INSTALLATION_ROOT}/packages/openssl_${{ matrix.config.arch }}-windows-static" \
+            ${GITHUB_WORKSPACE}
+
+    - name: Build (Single-config Generator)
+      if: ${{ runner.os != 'Windows' }}
+      shell: bash
+      working-directory: ${{ github.workspace }}/build
+      run: cmake --build .
+
+    - name: Build (Multi-config Generator)
+      if: ${{ runner.os == 'Windows' }}
+      shell: bash
+      working-directory: ${{ github.workspace }}/build
+      run: cmake --build . --config ${CONFIGURATION}
+
+    - name: Show Dependencies (Linux)
+      if: ${{ runner.os == 'Linux' }}
+      working-directory: ${{ github.workspace }}/build
+      shell: bash
+      run: ldd install_staging/nfiq2/bin/nfiq2
+
+    - name: Show Dependencies (macOS)
+      if: ${{ runner.os == 'macOS' }}
+      working-directory: ${{ github.workspace }}/build
+      shell: bash
+      run: otool -L install_staging/nfiq2/bin/nfiq2
+
+    - name: Save PR number and artifacts
+      working-directory: ${{ github.workspace }}/build
+      shell: bash
+      run: echo ${{ github.event.number }} > install_staging/pr_number
+
+    - name: Upload install_staging artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: install_staging-${{ matrix.config.os }}-${{ matrix.config.arch }}-embedded_${{ matrix.config.embed_rf }}
+        path: ${{ github.workspace }}/build/install_staging
+        retention-days: 7
+        if-no-files-found: error
+        overwrite: true
