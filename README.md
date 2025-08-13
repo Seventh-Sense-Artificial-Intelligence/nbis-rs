@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ppi: None, // No specific PPI, we will use the default
     };
 
-    let extractor = nbis::NbisExtractor::new(settings);
+    let extractor = nbis::NbisExtractor::new(settings)?;
 
     // Read the bytes from a file (you could also use nbis::extract_minutiae_from_image_file)
     // but here we just load the image bytes as image paths on mobile platforms can be tricky.

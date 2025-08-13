@@ -26,19 +26,17 @@ pub struct NbisExtractor {
 }
 
 #[uniffi::export]
-pub fn new_nbis_extractor(settings: NbisExtractorSettings) -> NbisExtractor {
-    NbisExtractor {
-        settings,
-        nfiq2: new_nfiq2().unwrap(),
-    }
+pub fn new_nbis_extractor(settings: NbisExtractorSettings) -> Result<NbisExtractor, NbisError> {
+    let nfiq2 = new_nfiq2()?;
+    Ok(NbisExtractor { settings, nfiq2 })
 }
 
 impl NbisExtractor {
-    pub fn new(settings: NbisExtractorSettings) -> Self {
-        NbisExtractor {
+    pub fn new(settings: NbisExtractorSettings) -> Result<Self, NbisError> {
+        Ok(NbisExtractor {
             settings,
-            nfiq2: new_nfiq2().unwrap(),
-        }
+            nfiq2: new_nfiq2()?,
+        })
     }
 }
 
@@ -318,7 +316,7 @@ mod tests {
         let p1_2 = fs::read("test_data/p1/p1_2.png").unwrap();
         let p1_3 = fs::read("test_data/p1/p1_3.png").unwrap();
 
-        let extractor = new_nbis_extractor(NbisExtractorSettings::default());
+        let extractor = new_nbis_extractor(NbisExtractorSettings::default()).unwrap();
 
         let res1 = extractor.extract_minutiae(&p_1).unwrap();
         let res2 = extractor.extract_minutiae(&p1_2).unwrap();
@@ -388,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_encode_to_iso() {
-        let extractor = new_nbis_extractor(NbisExtractorSettings::default());
+        let extractor = new_nbis_extractor(NbisExtractorSettings::default()).unwrap();
         let bryanc_1 = fs::read("test_data/p1/p1_1.png").unwrap();
         let res = extractor.extract_minutiae(&bryanc_1).unwrap();
         let encoded = res.to_iso_19794_2_2005();
@@ -511,7 +509,7 @@ mod tests {
 
     #[test]
     fn test_nfiq() {
-        let extractor = new_nbis_extractor(NbisExtractorSettings::default());
+        let extractor = new_nbis_extractor(NbisExtractorSettings::default()).unwrap();
         let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
         let res = extractor.extract_minutiae(&p1_1).unwrap();
 
@@ -525,7 +523,8 @@ mod tests {
             get_center: false,
             check_fingerprint: true,
             ppi: None,
-        });
+        })
+        .unwrap();
         let res2 = extractor.extract_minutiae(&random_image).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
@@ -545,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_negative() {
-        let extractor = new_nbis_extractor(NbisExtractorSettings::default());
+        let extractor = new_nbis_extractor(NbisExtractorSettings::default()).unwrap();
         //Try to extract minutae from a file that is not an image
         let res1 = extractor.extract_minutiae_from_image_file("build.rs");
 
@@ -590,7 +589,8 @@ mod tests {
             get_center: false,
             check_fingerprint: true,
             ppi: None,
-        });
+        })
+        .unwrap();
 
         let res1_n_2 = extractor.extract_minutiae(&n_2).unwrap();
         let res2_n_2 = extractor.extract_minutiae(&n_2).unwrap();
@@ -606,7 +606,8 @@ mod tests {
             get_center: true,
             check_fingerprint: false,
             ppi: None,
-        });
+        })
+        .unwrap();
         let res = extractor.extract_minutiae(&p1_1).unwrap();
         assert!(res.roi().is_some(), "Expected ROI to be present");
         let roi = res.roi().unwrap();
