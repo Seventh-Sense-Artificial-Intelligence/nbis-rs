@@ -59,8 +59,8 @@ class MinutiaeInstrumentationTest {
         val minutiae1: Minutiae = extractor.extractMinutiae(image1)
         val minutiae2: Minutiae = extractor.extractMinutiae(image2)
 
-        assertTrue("Expected a non-zero quality score", minutiae1.quality().score > 0)
-        assertTrue("Expected a non-zero quality score", minutiae2.quality().score > 0)
+        assertTrue("Expected a non-zero quality score", minutiae1.quality().score > 0u)
+        assertTrue("Expected a non-zero quality score", minutiae2.quality().score > 0u)
 
         assertNotNull(minutiae1)
         assertNotNull(minutiae2)
