@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
 use crate::{
-    bozorth::MinutiaeSet, consts::NUM_DIRECTIONS, ffi::DEFAULT_BOZORTH_MINUTIAE,
-    structs::NfiqQuality, structs::NfiqResult, Minutia, MinutiaKind, Minutiae, NbisError,
+    bozorth::MinutiaeSet, consts::NUM_DIRECTIONS, ffi_nbis::DEFAULT_BOZORTH_MINUTIAE, Minutia,
+    MinutiaKind, Minutiae, NbisError, Nfiq2Result,
 };
 
 /// Quantise an angle (degrees) into the 8-bit ISO/IEC 19794-2 orientation unit.
@@ -191,7 +191,7 @@ pub fn to_iso_19794_2_2005(minutiae_obj: &Minutiae) -> Vec<u8> {
     let view_and_impression = (view_number << 4) | (impression_type & 0x0F);
 
     // Convert NFIQ to ISO quality (0-100)
-    let finger_quality: u8 = minutiae_obj.nfiq.nfiq.to_iso_quality();
+    let finger_quality: u8 = minutiae_obj.nfiq.score as u8;
 
     // Reserved 4 bytes
     let reserved = [0x00, 0x00, 0x00, 0x00];
@@ -252,7 +252,7 @@ pub fn load_iso_19794_2_2005(template_bytes: &[u8]) -> Result<Minutiae, NbisErro
     let width = u16::from_be_bytes([template_bytes[14], template_bytes[15]]);
     let height = u16::from_be_bytes([template_bytes[16], template_bytes[17]]);
 
-    let finger_quality = NfiqQuality::from_iso_quality(template_bytes[20]);
+    let finger_quality = template_bytes[20];
 
     let num_minutiae = template_bytes[25] as usize;
     let minutiae_start = 26;
@@ -274,9 +274,10 @@ pub fn load_iso_19794_2_2005(template_bytes: &[u8]) -> Result<Minutiae, NbisErro
         minutiae,
         width as u32,
         height as u32,
-        NfiqResult {
-            nfiq: finger_quality,
-            confidence: 1.0,
+        Nfiq2Result {
+            score: finger_quality as u32,
+            actionable: Vec::new(), // No actionable items in ISO templates
+            features: Vec::new(),   // No features in ISO templates
         },
         None, // No ROI in ISO templates
     ))

@@ -6,17 +6,14 @@ on:
   pull_request:
     branches: [develop]
 
-env:
-  ANDROID_NDK_HOME: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
-  ANDROID_NDK_ROOT: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
-  ANDROID_SDK_ROOT: /home/ubuntu/Android/Sdk
-  
 jobs:
   build-and-test:
     runs-on: Linux
 
     steps:
     - uses: actions/checkout@v4
+      with:
+          clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
     - name: Run rust cargo tests
@@ -32,7 +29,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
+      with:
+          clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
@@ -51,7 +49,7 @@ jobs:
       run: |
         source .nbis-venv/bin/activate
         pip install twine
-        twine check dist/*
+        twine check dist/nbis_py*
 
     - name: Upload wheel as artifact
       uses: actions/upload-artifact@v4
@@ -69,6 +67,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+          clean: false
 
     - name: Download built wheel
       uses: actions/download-artifact@v4
@@ -98,7 +98,7 @@ jobs:
         overwrite: true
 
   build-python-bindings-windows:
-    name: Build Python Wheel Windows
+    name: Build Python Wheel (Windows)
     runs-on: Windows
     
     needs: [build-and-test]
@@ -214,11 +214,16 @@ jobs:
   build-android-bindings:
     name: Build android aar file
     runs-on: Linux
+    env:
+      ANDROID_NDK_HOME: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
+      ANDROID_NDK_ROOT: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
+      ANDROID_SDK_ROOT: /home/ubuntu/Android/Sdk
     needs: [build-and-test]
     
     steps:
     - uses: actions/checkout@v4
-
+      with:
+          clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
@@ -241,7 +246,8 @@ jobs:
    
     steps:
     - uses: actions/checkout@v4
-
+      with:
+          clean: false
     - name: Download built aar file
       uses: actions/download-artifact@v4
       with:

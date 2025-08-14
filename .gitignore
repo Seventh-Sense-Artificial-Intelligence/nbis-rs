@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 .venv/ 
 .pytest_cache/
+ext/NFIQ2-2.3.0/opencv/
+ext/NFIQ2-2.3.0/fingerjetfxose/
+ext/NFIQ2-2.3.0/digestpp/
+ext/NFIQ2-2.3.0/libbiomeval/

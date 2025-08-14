@@ -10,7 +10,7 @@ Write-Host "Building Python wheel on Windows (PowerShell)..." -ForegroundColor G
 
 # Get the absolute path dynamically
 $projectPath = (Get-Location).Path
-$env:RUSTFLAGS="-L $projectPath\ext\opencv_libs"
+$env:RUSTFLAGS="-L $projectPath\ext\nfiq2_libs\x64\mingw\staticlib"
 
 # Check if Python is available
 try {

@@ -1,0 +1,15 @@
+[submodule "fingerjetfxose"]
+	path = fingerjetfxose
+	url = https://github.com/FingerJetFXOSE/FingerJetFXOSE.git
+[submodule "digestpp"]
+	path = digestpp
+	url = https://github.com/kerukuro/digestpp.git
+[submodule "libbiomeval"]
+	path = libbiomeval
+	url = https://github.com/usnistgov/libbiomeval.git
+[submodule "opencv"]
+	path = opencv
+	url = https://github.com/opencv/opencv.git
+[submodule "NFIR"]
+	path = NFIR
+	url = https://github.com/gfiumara/NFIR.git

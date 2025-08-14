@@ -50,13 +50,17 @@ class MinutiaeInstrumentationTest {
             minQuality = 0.2,         // Example value
             getCenter = true,         // Whether to extract core point
             checkFingerprint = true,  // Whether to verify valid fingerprint
-            ppi = null              // Pixels per inch of sensor (standard is 500)
+            computeNfiq2 = true,      // Whether to compute NFIQ2 quality score
+            ppi = null                // Pixels per inch of sensor (standard is 500)
         )
 
         val extractor: NbisExtractor = newNbisExtractor(settings)
 
         val minutiae1: Minutiae = extractor.extractMinutiae(image1)
         val minutiae2: Minutiae = extractor.extractMinutiae(image2)
+
+        assertTrue("Expected a non-zero quality score", minutiae1.quality().score > 0u)
+        assertTrue("Expected a non-zero quality score", minutiae2.quality().score > 0u)
 
         assertNotNull(minutiae1)
         assertNotNull(minutiae2)

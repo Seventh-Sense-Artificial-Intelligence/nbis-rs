@@ -1,7 +1,7 @@
-use std::env;
-use std::fs;
-use std::io;
-use std::path::Path;
+use std::{
+    env, fs, io,
+    path::{Path, PathBuf},
+};
 
 fn android_abi_from_target(target: &str) -> Option<&'static str> {
     if target.contains("aarch64") {
@@ -17,6 +17,123 @@ fn android_abi_from_target(target: &str) -> Option<&'static str> {
     }
 }
 
+fn copy_nfiq2_dirs() {
+    let source = Path::new("ext/opencv-4.10.0");
+    let dst = Path::new("ext/NFIQ2-2.3.0/opencv");
+    copy_dir_recursive(source, dst).expect("failed to copy OpenCV dir");
+
+    let source = Path::new("ext/FingerJetFXOSE");
+    let dst = Path::new("ext/NFIQ2-2.3.0/fingerjetfxose");
+    copy_dir_recursive(source, dst).expect("failed to copy FingerJetFXOSE dir");
+
+    let source = Path::new("ext/digestpp");
+    let dst = Path::new("ext/NFIQ2-2.3.0/digestpp");
+    copy_dir_recursive(source, dst).expect("failed to copy digestpp dir");
+
+    let source = Path::new("ext/libbiomeval-10.0");
+    let dst = Path::new("ext/NFIQ2-2.3.0/libbiomeval");
+    copy_dir_recursive(source, dst).expect("failed to copy libbiomeval-10.0 dir");
+}
+
+fn build_nfiq2() -> PathBuf {
+    let target = env::var("TARGET").unwrap_or_default();
+    let is_android = target.contains("android");
+    let is_linux = target.contains("linux") && !target.contains("android");
+    //let is_windows = target.contains("windows");
+    let is_macos = target.contains("apple") || target.contains("darwin");
+    copy_nfiq2_dirs();
+
+    // ---- CMake for NFIQ2 ----
+    let mut cmake = cmake::Config::new("ext/NFIQ2-2.3.0");
+    cmake
+        .define("CMAKE_BUILD_TYPE", "Release")
+        .define("CMAKE_INSTALL_PREFIX", "NFIQ2-2.3.0/install")
+        .define("EMBED_RANDOM_FOREST_PARAMETERS", "ON")
+        .define("EMBEDDED_RANDOM_FOREST_PARAMETER_FCT", "3")
+        .define("BUILD_NFIQ2_CLI", "OFF");
+
+    if is_android {
+        let ndk = env::var("ANDROID_NDK_ROOT").expect("ANDROID_NDK_ROOT not set");
+        let abi = android_abi_from_target(&target)
+            .expect("Unsupported Android ABI. Supported ABIs: arm64-v8a, armeabi-v7a, x86_64, x86");
+        cmake.define("ANDROID_ABI", abi);
+        cmake.define(
+            "CMAKE_TOOLCHAIN_FILE",
+            format!("{ndk}/build/cmake/android.toolchain.cmake"),
+        );
+    }
+
+    let dst = cmake.build();
+
+    // Define the include and library paths for NFIQ2
+    let nfiq2_include_path = dst.join("build/install_staging/nfiq2/include");
+    let nfiq2_lib_path = dst.join("build/install_staging/nfiq2/lib");
+
+    // On Android, OpenCV libraries are in a different location
+    let opencv_android_lib_path = if is_android {
+        let abi = android_abi_from_target(&target).expect("Unsupported Android ABI");
+        Some(dst.join(format!(
+            "build/install_staging/nfiq2/sdk/native/staticlibs/{abi}",
+        )))
+    } else {
+        None
+    };
+
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let opencv_lib_path = out_dir.join("build/install_staging/nfiq2/lib");
+
+    // 1) Compile the C++ FFI wrapper
+    cc::Build::new()
+        .cpp(true) // switch to a C++ compiler
+        .flag_if_supported("-std=c++14") // or c++11/17, whichever you need
+        .include(&nfiq2_include_path) // where nfiq2.hpp lives
+        .include("src/cwrapper")
+        .file("src/cwrapper/nfiq_wrapper.cpp") // your FFI source
+        .define("NOVERBOSE", None) // you probably don’t want stdout spam
+        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
+        .compile("nfiq2_ffi"); // emits libnfiq2_ffi.a
+
+    // 2) Link against both the wrapper and the NFIQ2 / OpenCV libs
+    println!("cargo:rustc-link-lib=static=nfiq2_ffi");
+    println!(
+        "cargo:rustc-link-search=native={}",
+        nfiq2_lib_path.display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        opencv_lib_path.display()
+    );
+
+    // Include the OpenCV libs path for Android
+    if let Some(opencv_android_lib_path) = opencv_android_lib_path {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            opencv_android_lib_path.display()
+        );
+    }
+
+    println!("cargo:rustc-link-lib=static=nfiq2");
+
+    if is_linux {
+        println!("cargo:rustc-link-lib=dylib=stdc++");
+        println!("cargo:rustc-link-lib=dylib=z");
+    }
+
+    if is_android {
+        println!("cargo:rustc-link-lib=z");
+        println!("cargo:rustc-link-lib=android");
+        println!("cargo:rustc-link-lib=c++_shared");
+    }
+
+    if is_macos {
+        println!("cargo:rustc-link-lib=framework=Accelerate");
+        println!("cargo:rustc-link-lib=framework=OpenCL");
+        //println!("cargo:rustc-link-lib=static=zlib");
+    }
+
+    dst
+}
+
 // build.rs
 fn main() {
     println!("cargo:rerun-if-env-changed=CLIPPY");
@@ -26,85 +143,8 @@ fn main() {
     let is_linux = target.contains("linux") && !target.contains("android");
     let is_windows = target.contains("windows");
 
-    // ---- CMake for OpenCV ----
-    let mut cmake = cmake::Config::new("ext/opencv-4.10.0");
-
-    if is_android {
-        let ndk = env::var("ANDROID_NDK_HOME").expect("ANDROID_NDK_HOME not set");
-        let abi = if target.contains("aarch64") {
-            "arm64-v8a"
-        } else if target.contains("armv7") {
-            "armeabi-v7a"
-        } else {
-            panic!("Unsupported Android ABI: {target}");
-        };
-
-        cmake
-            .define("CMAKE_SYSTEM_NAME", "Android")
-            .define("CMAKE_SYSTEM_VERSION", "21") // minSdkVersion
-            .define("CMAKE_ANDROID_ARCH_ABI", abi)
-            .define("CMAKE_ANDROID_NDK", &ndk)
-            .define("ANDROID_NATIVE_API_LEVEL", "21")
-            .define("ANDROID_ABI", abi)
-            .define("ANDROID_STL", "c++_static")
-            .define("INSTALL_CREATE_DISTRIB", "ON")
-            .define("CMAKE_INSTALL_PREFIX", "opencv_install")
-            .define(
-                "CMAKE_INSTALL_INCLUDEDIR",
-                "opencv_install/sdk/native/jni/include",
-            )
-            .define("CMAKE_INSTALL_LIBDIR", "opencv_install/sdk/native/libs")
-            .define("BUILD_ANDROID_PROJECTS", "OFF")
-            .define("BUILD_ANDROID_EXAMPLES", "OFF")
-            .define("BUILD_opencv_java", "OFF")
-            .define("WITH_CPUFEATURES", "OFF")
-            .build_target("install")
-            .define(
-                "CMAKE_TOOLCHAIN_FILE",
-                format!("{ndk}/build/cmake/android.toolchain.cmake"),
-            );
-    }
-
-    let mut nfiq_cc = cc::Build::new();
-    nfiq_cc.file("ext/nbis/nfiq/src/lib/nfiq/nfiq.c")
-        .file("ext/nbis/nfiq/src/lib/nfiq/nfiqgbls.c")
-        .file("ext/nbis/nfiq/src/lib/nfiq/nfiqread.c")
-        .file("ext/nbis/nfiq/src/lib/nfiq/znorm.c")
-        .file("ext/nbis/commonbis/src/lib/util/syserr.c")
-        .file("ext/nbis/commonbis/src/lib/util/fatalerr.c")
-        .file("ext/nbis/commonbis/src/lib/util/memalloc.c")
-        .file("ext/nbis/commonbis/src/lib/util/ssxstats.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/dataio.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/fileexst.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/filehead.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/fileroot.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/filesize.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/filetail.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/findfile.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/newext.c")
-        .file("ext/nbis/commonbis/src/lib/ioutil/readutil.c")
-        .file("ext/nbis/commonbis/src/lib/cblas/sgemv.c")
-        .file("ext/nbis/commonbis/src/lib/cblas/xerbla.c")
-        .file("ext/nbis/commonbis/src/lib/cblas/lsame.c")
-        .file("ext/nbis/pcasys/src/lib/mlp/runmlp.c")
-        .file("ext/nbis/pcasys/src/lib/mlp/acs.c")
-        .file("ext/nbis/pcasys/src/lib/mlp/mlpcla.c")
-        .include("ext/nbis/pcasys/include")
-        .include("ext/nbis/nfiq/include")
-        .include("ext/nbis/mindtct/include")
-        .include("ext/nbis/commonbis/include")
-        .include("ext/nbis/imgtools/include")
-        .define("NOVERBOSE", None) // you probably don’t want stdout spam
-        .flag_if_supported("-w") // for GCC/Clang: suppress *all* warnings
-        ;
-
-    if is_windows {
-        nfiq_cc
-            .file("ext/sys_time/time.cpp")
-            .include("ext/sys_time");
-    }
-
-    nfiq_cc.compile("nfiq");
+    let dst = build_nfiq2();
+    // dst: /home/coder/nbis-rs/target/release/build/nbis-rs-4685d910ce23e274/out
 
     let mut bozorth_cc = cc::Build::new();
     bozorth_cc
@@ -172,44 +212,6 @@ fn main() {
 
     mindtct_cc.compile("mindtct");
 
-    let dst = cmake
-        .define("BUILD_SHARED_LIBS", "OFF")
-        // Disbale image codecs we don't need
-        .define("BUILD_PNG", "OFF")
-        .define("BUILD_JPEG", "OFF")
-        .define("BUILD_TIFF", "OFF")
-        .define("BUILD_WEBP", "OFF")
-        .define("BUILD_OPENJPEG", "OFF")
-        // For Mac
-        .define("WITH_TEGRA", "OFF")
-        .define("WITH_CAROTENE", "OFF") // ← stop building the carotene_o4t HAL
-        .define("WITH_LAPACK", "OFF")
-        .define("WITH_OPENCL", "OFF")
-        // disable unnecessary modules
-        .define("WITH_FFMPEG", "OFF")
-        .define("WITH_CUDA", "OFF")
-        .define("WITH_CUDNN", "OFF")
-        .define("WITH_GSTREAMER", "OFF")
-        .define("WITH_V4L", "OFF")
-        .define("WITH_V4L2", "OFF")
-        .define("WITH_LIBV4L", "OFF")
-        .define("WITH_IPP", "OFF")
-        .define("BUILD_IPP_IW", "OFF")
-        .define("WITH_ITT", "OFF")
-        .define("BUILD_opencv_hal", "ON")
-        .define("BUILD_opencv_python2", "OFF")
-        .define("BUILD_opencv_python3", "OFF")
-        .define("BUILD_opencv_python_bindings_generator", "OFF")
-        .define("BUILD_opencv_videoio", "OFF")
-        .define("BUILD_LIST", "core,imgproc") // only build needed modules
-        .define("BUILD_EXAMPLES", "OFF")
-        .define("BUILD_TESTS", "OFF")
-        .define("BUILD_ZLIB", "OFF")
-        .define("BUILD_PERF_TESTS", "OFF")
-        .define("OPENCV_INCLUDE_INSTALL_PATH", "include/opencv4")
-        .define("CMAKE_CXX_STANDARD", "14")
-        .build();
-
     let mut sivv_cpp = cc::Build::new();
     sivv_cpp
         .cpp(true)
@@ -217,7 +219,10 @@ fn main() {
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
-        .include(dst.join("include/opencv4"))
+        // Windows
+        .include(dst.join("build/install_staging/nfiq2/include"))
+        // Linux / Mac / Android
+        .include(dst.join("build/install_staging/nfiq2/include/opencv4"))
         // Additional includes for Android
         .include(dst.join("build/opencv_install/sdk/native/jni/include"))
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
@@ -232,8 +237,9 @@ fn main() {
     }
 
     if is_android {
-        let ocv_header_path = dst.join("build/opencv_install/include");
-        sivv_cpp.include(ocv_header_path.join("opencv4"));
+        // dst: /home/coder/nbis-rs/target/aarch64-linux-android/release/build/nbis-rs-0311d84ca63bc87e/out
+        let ocv_header_path = dst.join("build/install_staging/nfiq2/sdk/native/jni/include");
+        sivv_cpp.include(ocv_header_path);
     }
 
     sivv_cpp.compile("sivv");
@@ -241,9 +247,9 @@ fn main() {
     if is_android || is_linux {
         let opencv_lib_dir = if is_android {
             let abi = android_abi_from_target(&target).expect("Unsupported Android target");
-            dst.join("build").join("lib").join(abi)
+            dst.join("build/install_staging/nfiq2/lib").join(abi)
         } else {
-            dst.join("build").join("lib")
+            dst.join("build/install_staging/nfiq2/lib")
         };
 
         // Set lib path
@@ -258,11 +264,17 @@ fn main() {
 
     if !is_windows {
         println!("cargo:rustc-link-lib=static=opencv_imgproc");
+        println!("cargo:rustc-link-lib=static=opencv_ml");
+        println!("cargo:rustc-link-lib=static=opencv_imgcodecs");
+        println!("cargo:rustc-link-lib=static=opencv_imgproc");
         println!("cargo:rustc-link-lib=static=opencv_core");
+        println!("cargo:rustc-link-lib=static=FRFXLL_static");
     } else {
-        let lib_src_dir_str = format!("{}/build/lib", &dst.display());
+        // dst.join("build/install_staging/nfiq2/lib");
+        // let lib_src_dir_str = format!("{}/build/lib", &dst.display());
+        let lib_src_dir_str = format!("{}/build/install_staging/nfiq2", &dst.display());
         let lib_src_dir = Path::new(&lib_src_dir_str);
-        let lib_dst_dir = Path::new("ext/opencv_libs");
+        let lib_dst_dir = Path::new("ext/nfiq2_libs");
 
         // Copy the directory
         if let Err(e) = copy_dir_recursive(lib_src_dir, lib_dst_dir) {
@@ -270,9 +282,13 @@ fn main() {
         }
 
         println!("cargo:rustc-link-search=native=C:/msys64/mingw64/lib");
-        println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
+        println!("cargo:rustc-link-search=native={}/lib", &lib_src_dir_str);
+        println!("cargo:rustc-link-search=native={}/x64/mingw/staticlib", &lib_src_dir_str);
         println!("cargo:rustc-link-lib=static=opencv_imgproc4100");
+        println!("cargo:rustc-link-lib=static=opencv_ml4100");
+        println!("cargo:rustc-link-lib=static=opencv_imgcodecs4100");
         println!("cargo:rustc-link-lib=static=opencv_core4100");
+        println!("cargo:rustc-link-lib=static=FRFXLL_static");
         println!("cargo:rustc-link-lib=static=openblas");
         println!("cargo:rustc-link-lib=static=gomp");
         println!("cargo:rustc-link-lib=static=stdc++");
@@ -280,16 +296,17 @@ fn main() {
 
     println!("cargo:rustc-link-lib=z");
 
-    if is_android {
-        println!("cargo:rustc-link-lib=c++_shared");
-    }
-
     // Automatically re-run build.rs if these files change
     println!("cargo:rerun-if-changed=ext/nbis/bozorth/src/lib/bozorth3/bozorth3.c");
     println!("cargo:rerun-if-changed=ext/nbis/bozorth/include");
 }
 
 fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
+    // If dst exists, delete it
+    if dst.exists() {
+        fs::remove_dir_all(dst)?;
+    }
+
     // Create the destination directory if it doesn't exist
     if !dst.exists() {
         fs::create_dir_all(dst)?;

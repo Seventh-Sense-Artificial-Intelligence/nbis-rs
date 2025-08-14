@@ -11,31 +11,32 @@ use imageproc::{
 
 use crate::{
     consts::MM_PER_INCH,
-    ffi::{
-        comp_nfiq_featvctr, dflt_acfunc_hids, dflt_acfunc_outs, dflt_nHids, dflt_nInps, dflt_nOuts,
-        dflt_wts, dflt_znorm_means, dflt_znorm_stds, free, free_minutiae, get_minutiae, runmlp2,
-        znorm_fniq_featvctr, DEFAULT_BOZORTH_MINUTIAE, LFSPARMS, MINUTIAE, MIN_MINUTIAE,
-        NFIQ_NUM_CLASSES, NFIQ_VCTRLEN,
-    },
+    ffi_nbis::{free, free_minutiae, get_minutiae, DEFAULT_BOZORTH_MINUTIAE, LFSPARMS, MINUTIAE},
     imutils::{draw_arrow_with_head, png_bytes_from_rgb},
+    nfiq2_api::{new_nfiq2, Nfiq2},
     sivv::{find_fingerprint_center, is_fingerprint, sivv},
-    structs::{NbisExtractorSettings, NfiqResult},
-    Minutia, MinutiaKind, Minutiae, NbisError, NfiqQuality, Point, ROI,
+    structs::NbisExtractorSettings,
+    Minutia, MinutiaKind, Minutiae, NbisError, Nfiq2Result, Point, ROI,
 };
 
 #[derive(Debug, Clone, uniffi::Object)]
 pub struct NbisExtractor {
     settings: NbisExtractorSettings,
+    nfiq2: Nfiq2,
 }
 
 #[uniffi::export]
-pub fn new_nbis_extractor(settings: NbisExtractorSettings) -> NbisExtractor {
-    NbisExtractor { settings }
+pub fn new_nbis_extractor(settings: NbisExtractorSettings) -> Result<NbisExtractor, NbisError> {
+    let nfiq2 = new_nfiq2()?;
+    Ok(NbisExtractor { settings, nfiq2 })
 }
 
 impl NbisExtractor {
-    pub fn new(settings: NbisExtractorSettings) -> Self {
-        NbisExtractor { settings }
+    pub fn new(settings: NbisExtractorSettings) -> Result<Self, NbisError> {
+        Ok(NbisExtractor {
+            settings,
+            nfiq2: new_nfiq2()?,
+        })
     }
 }
 
@@ -128,11 +129,11 @@ impl NbisExtractor {
         self.extract_minutiae(&image_bytes)
     }
 
-    pub fn extract_minutiae(&self, image: &[u8]) -> Result<Minutiae, NbisError> {
+    pub fn extract_minutiae(&self, image_bytes: &[u8]) -> Result<Minutiae, NbisError> {
         let ppi = self.settings.ppi.unwrap_or(500.0); // default to 500 dpi
 
         // 1) Load the image ------------------------------------------------------
-        let image = match image::load_from_memory(image) {
+        let image = match image::load_from_memory(image_bytes) {
             Ok(img) => img,
             Err(_e) => return Err(NbisError::ImageLoadError),
         };
@@ -153,9 +154,10 @@ impl NbisExtractor {
                     Vec::new(),
                     iw,
                     ih,
-                    NfiqResult {
-                        nfiq: NfiqQuality::Unknown,
-                        confidence: 0.0,
+                    Nfiq2Result {
+                        score: 0,
+                        actionable: Vec::new(),
+                        features: Vec::new(),
                     },
                     None, // No ROI in this case
                 ));
@@ -228,70 +230,18 @@ impl NbisExtractor {
             return Err(NbisError::UnexpectedError(rc as i64));
         };
 
-        // 7) Compute NFIQv1 quality assessment -----------------------------
-        let mut quality = NfiqResult {
-            nfiq: NfiqQuality::Poor,
-            confidence: 1.0,
-        };
-        // Only do quality assessment if there are enough minutiae
-        if unsafe { (*ominutiae).num } > MIN_MINUTIAE as i32 {
-            let mut featvctr = [0.0f32; NFIQ_VCTRLEN];
-            let mut optflag = 0;
-
-            let ret = unsafe {
-                comp_nfiq_featvctr(
-                    featvctr.as_mut_ptr(),
-                    NFIQ_VCTRLEN as c_int,
-                    ominutiae,
-                    oquality_map,
-                    map_w,
-                    map_h,
-                    &mut optflag,
-                )
-            };
-
-            if ret == 0 {
-                // Z-normalize the feature vector
-                unsafe {
-                    znorm_fniq_featvctr(
-                        featvctr.as_mut_ptr(),
-                        dflt_znorm_means.as_ptr(),
-                        dflt_znorm_stds.as_ptr(),
-                        NFIQ_VCTRLEN as c_int,
-                    )
-                };
-
-                // Call the MLP for NFIQ classification
-                // Define the output arrays
-                let mut outacs = [0.0f32; NFIQ_NUM_CLASSES];
-                let mut class_idx: c_int = 0;
-                let mut confidence: f32 = 0.0;
-                let ret = unsafe {
-                    runmlp2(
-                        dflt_nInps,
-                        dflt_nHids,
-                        dflt_nOuts,
-                        dflt_acfunc_hids,
-                        dflt_acfunc_outs,
-                        dflt_wts.as_ptr() as *mut f32,
-                        featvctr.as_mut_ptr(),
-                        outacs.as_mut_ptr(),
-                        &mut class_idx,
-                        &mut confidence,
-                    )
-                };
-
-                if ret == 0 {
-                    // Map the class index to NFIQ quality
-                    quality = NfiqResult {
-                        nfiq: NfiqQuality::from_i32(class_idx + 1).unwrap_or(NfiqQuality::Poor),
-                        confidence,
-                    };
-                }
+        // 7) Compute NFIQv2 quality assessment -----------------------------
+        let quality = if self.settings.compute_nfiq2 {
+            self.nfiq2.compute(image_bytes)?
+        } else {
+            Nfiq2Result {
+                score: 0,
+                actionable: Vec::new(),
+                features: Vec::new(),
             }
-        }
+        };
 
-        // 7) Convert C results -----------------------------
+        // 8) Convert C results -----------------------------
         let minutiae = NonNull::new(ominutiae).expect("C returned null pointer");
         let mut minutiae_obj = unsafe {
             let mset = &*minutiae.as_ptr(); // &MINUTIAE
@@ -362,7 +312,7 @@ impl NbisExtractor {
 
 #[cfg(test)]
 mod tests {
-    use crate::ffi::DEFAULT_BOZORTH_MINUTIAE;
+    use crate::ffi_nbis::DEFAULT_BOZORTH_MINUTIAE;
 
     use super::*;
     use std::fs;
@@ -374,7 +324,7 @@ mod tests {
         let p1_2 = fs::read("test_data/p1/p1_2.png").unwrap();
         let p1_3 = fs::read("test_data/p1/p1_3.png").unwrap();
 
-        let extractor = new_nbis_extractor(NbisExtractorSettings::default());
+        let extractor = new_nbis_extractor(NbisExtractorSettings::default()).unwrap();
 
         let res1 = extractor.extract_minutiae(&p_1).unwrap();
         let res2 = extractor.extract_minutiae(&p1_2).unwrap();
@@ -444,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_encode_to_iso() {
-        let extractor = new_nbis_extractor(NbisExtractorSettings::default());
+        let extractor = new_nbis_extractor(NbisExtractorSettings::default()).unwrap();
         let bryanc_1 = fs::read("test_data/p1/p1_1.png").unwrap();
         let res = extractor.extract_minutiae(&bryanc_1).unwrap();
         let encoded = res.to_iso_19794_2_2005();
@@ -454,8 +404,8 @@ mod tests {
 
         // Qualiity should match the original
         assert_eq!(
-            res.quality().nfiq,
-            minutiae.quality().nfiq,
+            res.quality().score,
+            minutiae.quality().score,
             "NFIQ quality should match original"
         );
 
@@ -567,18 +517,12 @@ mod tests {
 
     #[test]
     fn test_nfiq() {
-        let extractor = new_nbis_extractor(NbisExtractorSettings::default());
+        let extractor = new_nbis_extractor(NbisExtractorSettings::default()).unwrap();
         let p1_1 = fs::read("test_data/p1/p1_1.png").unwrap();
         let res = extractor.extract_minutiae(&p1_1).unwrap();
-        assert!(
-            (0.0..=1.0).contains(&res.quality().confidence),
-            "Confidence should be between 0.0 and 1.0"
-        );
+
         // Quality should be very good for this image
-        assert!(
-            res.quality().nfiq == NfiqQuality::Excellent,
-            "NFIQ for p1_1 should be Excellent"
-        );
+        assert!(res.quality().score > 60, "NFIQ for p1_1 should > 60");
 
         // Test a non-fingerprint image
         let random_image = fs::read("test_data/negative/landscape.jpg").unwrap();
@@ -586,12 +530,14 @@ mod tests {
             min_quality: 0.0,
             get_center: false,
             check_fingerprint: true,
+            compute_nfiq2: true,
             ppi: None,
-        });
+        })
+        .unwrap();
         let res2 = extractor.extract_minutiae(&random_image).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
-            res2.quality().nfiq == NfiqQuality::Unknown,
+            res2.quality().score == 0,
             "NFIQ for non-fingerprint image should be Unknown"
         );
 
@@ -600,14 +546,14 @@ mod tests {
         let res2 = extractor.extract_minutiae(&random_image).unwrap();
         // The quality should be poorest for non-fingerprint images
         assert!(
-            res2.quality().nfiq == NfiqQuality::Unknown,
+            res2.quality().score == 0,
             "NFIQ for non-fingerprint image should be Unknown"
         );
     }
 
     #[test]
     fn test_negative() {
-        let extractor = new_nbis_extractor(NbisExtractorSettings::default());
+        let extractor = new_nbis_extractor(NbisExtractorSettings::default()).unwrap();
         //Try to extract minutae from a file that is not an image
         let res1 = extractor.extract_minutiae_from_image_file("build.rs");
 
@@ -651,8 +597,10 @@ mod tests {
             min_quality: 0.0,
             get_center: false,
             check_fingerprint: true,
+            compute_nfiq2: false,
             ppi: None,
-        });
+        })
+        .unwrap();
 
         let res1_n_2 = extractor.extract_minutiae(&n_2).unwrap();
         let res2_n_2 = extractor.extract_minutiae(&n_2).unwrap();
@@ -667,8 +615,10 @@ mod tests {
             min_quality: 0.0,
             get_center: true,
             check_fingerprint: false,
+            compute_nfiq2: false,
             ppi: None,
-        });
+        })
+        .unwrap();
         let res = extractor.extract_minutiae(&p1_1).unwrap();
         assert!(res.roi().is_some(), "Expected ROI to be present");
         let roi = res.roi().unwrap();

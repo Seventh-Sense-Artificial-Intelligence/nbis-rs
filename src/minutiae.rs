@@ -2,7 +2,8 @@ use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
 use crate::minutia::Minutia;
-use crate::structs::{NfiqResult, ROI};
+use crate::structs::ROI;
+use crate::Nfiq2Result;
 use crate::{bozorth::bz_match_score, encoding::to_nist_xyt_set};
 /// A set of minutiae extracted from a fingerprint image.
 #[derive(Debug, Clone, uniffi::Object)]
@@ -10,7 +11,7 @@ pub struct Minutiae {
     pub(crate) inner: Vec<Minutia>,
     pub(crate) img_w: u32, // original image width for XYT conversion
     pub(crate) img_h: u32, // original image height for XYT conversion
-    pub(crate) nfiq: NfiqResult,
+    pub(crate) nfiq: Nfiq2Result,
     pub(crate) roi: Option<ROI>,
 }
 
@@ -19,7 +20,7 @@ impl Minutiae {
         minutiae: Vec<Minutia>,
         img_w: u32,
         img_h: u32,
-        nfiq: NfiqResult,
+        nfiq: Nfiq2Result,
         roi: Option<ROI>,
     ) -> Self {
         Minutiae {
@@ -69,7 +70,7 @@ impl Minutiae {
         }
     }
 
-    pub fn quality(&self) -> NfiqResult {
+    pub fn quality(&self) -> Nfiq2Result {
         self.nfiq.clone()
     }
 
