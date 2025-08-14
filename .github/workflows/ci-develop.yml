@@ -17,6 +17,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+          clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
     - name: Run rust cargo tests
@@ -32,7 +34,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
+      with:
+          clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
@@ -69,6 +72,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+          clean: false
 
     - name: Download built wheel
       uses: actions/download-artifact@v4
@@ -98,7 +103,7 @@ jobs:
         overwrite: true
 
   build-python-bindings-windows:
-    name: Build Python Wheel Windows
+    name: Build Python Wheel (Windows)
     runs-on: Windows
     
     needs: [build-and-test]
@@ -218,7 +223,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-
+      with:
+          clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
@@ -241,7 +247,8 @@ jobs:
    
     steps:
     - uses: actions/checkout@v4
-
+      with:
+          clean: false
     - name: Download built aar file
       uses: actions/download-artifact@v4
       with:
