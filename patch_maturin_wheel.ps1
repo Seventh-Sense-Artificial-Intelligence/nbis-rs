@@ -63,7 +63,8 @@ try {
     
     # Filter out License-File lines
     $content = Get-Content $metadataPath | Where-Object { $_ -notmatch '^License-File:' }
-    $content | Set-Content $metadataPath -Encoding UTF8
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllLines($metadataPath, $content, $utf8NoBom)
 
     # Rename libuniffi_nbis.* → libnbis.*
     Write-Host "Renaming library files..." -ForegroundColor Cyan
