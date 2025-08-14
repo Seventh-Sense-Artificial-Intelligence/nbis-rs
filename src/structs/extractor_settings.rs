@@ -9,6 +9,9 @@ pub struct NbisExtractorSettings {
     /// Whether to use SIVV to check for a valid fingerprint.
     pub check_fingerprint: bool,
 
+    /// Whether to compute the NFIQ2 quality of the fingerprint
+    pub compute_nfiq2: bool,
+
     /// The PPI (pixels per inch) of the image. Default is 500.
     pub ppi: Option<f64>,
 }
@@ -20,6 +23,7 @@ impl Default for NbisExtractorSettings {
             min_quality: 0.0,
             get_center: false,
             check_fingerprint: false,
+            compute_nfiq2: true,
             ppi: None,
         }
     }

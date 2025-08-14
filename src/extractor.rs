@@ -231,7 +231,15 @@ impl NbisExtractor {
         };
 
         // 7) Compute NFIQv2 quality assessment -----------------------------
-        let quality = self.nfiq2.compute(image_bytes)?;
+        let quality = if self.settings.compute_nfiq2 {
+            self.nfiq2.compute(image_bytes)?
+        } else {
+            Nfiq2Result {
+                score: 0,
+                actionable: Vec::new(),
+                features: Vec::new(),
+            }
+        };
 
         // 8) Convert C results -----------------------------
         let minutiae = NonNull::new(ominutiae).expect("C returned null pointer");
@@ -522,6 +530,7 @@ mod tests {
             min_quality: 0.0,
             get_center: false,
             check_fingerprint: true,
+            compute_nfiq2: true,
             ppi: None,
         })
         .unwrap();
@@ -588,6 +597,7 @@ mod tests {
             min_quality: 0.0,
             get_center: false,
             check_fingerprint: true,
+            compute_nfiq2: false,
             ppi: None,
         })
         .unwrap();
@@ -605,6 +615,7 @@ mod tests {
             min_quality: 0.0,
             get_center: true,
             check_fingerprint: false,
+            compute_nfiq2: false,
             ppi: None,
         })
         .unwrap();

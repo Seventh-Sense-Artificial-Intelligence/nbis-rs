@@ -1,14 +1,15 @@
 ## NBIS-rs
 
-[![CI](https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/actions/workflows/ci.yaml/badge.svg)](https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs/actions/workflows/ci.yaml)
-
 This is a Rust/Python binding to the [NIST Biometric Image Software](https://www.nist.gov/services-resources/software/nist-biometric-image-software-nbis) (NBIS) library, which is used for processing biometric images, particularly in the context of fingerprint recognition.
+
+For convenience, this library also binds to the [NIST Fingerprint Image Quality](https://www.nist.gov/services-resources/software/nfiq-2) (NFIQ) version 2. 
 
 ## Features
 
-- Bindings to NBIS functions for minutia extraction, matching, and image quality assessment
+- Bindings to NBIS functions for minutia extraction, matching
 - Exports minutiae templates in ISO/IEC 19794-2:2005 format
 - Matches minutiae templates against each other using the NBIS Bozorth3 algorithm
+- Provides support for NFIQ2 quality assessment
 
 ## Installation (Rust)
 
@@ -30,10 +31,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use nbis::NbisExtractorSettings;
     // Configuration for the NbisExtractor
     let settings = NbisExtractorSettings {
-        min_quality: 0.0, // No filtering on quality
-        get_center: false, // We don't need the center of the fingerprint or roi for this example
-        check_fingerprint: false, // We don't need to check if the image is a fingerprint for this example
-        ppi: None, // No specific PPI, we will use the default
+        // No filtering on minutiae quality (all minutiae will be included)
+        min_quality: 0.0,
+        // Do not compute ROI or center to save computing resources
+        get_center: false,
+        // Do not check if the image is a fingerprint using SIVV
+        check_fingerprint: false,
+        // compute the NFIQ score
+        compute_nfiq2: true,
+        // No specific PPI, use the default
+        ppi: None,
     };
 
     let extractor = nbis::NbisExtractor::new(settings)?;
@@ -80,6 +87,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let score = minutiae_1.compare(&minutiae_4);
     assert!(score < 35, "Expected a low similarity score between p1_1 and p2_1");
 
+    // We can access the NFIQ2 quality via:
+    let nfiq2_quality = minutiae_1.quality();
+    assert!(nfiq2_quality.score > 50, "Expected a positive NFIQ2 quality score");
+
     Ok(())
 }
 ```
@@ -97,14 +108,31 @@ Here's a simple example of how to use the NBIS Python bindings:
 
 ```python
 import nbis
+from nbis import NbisExtractor, NbisExtractorSettings
+
+ #Configuration for the NbisExtractor
+settings = NbisExtractorSettings(
+    # Do not filter on minutiae quality (get all minutiae)
+    min_quality=0.0,
+    # Do not get the fingerprint center or ROI
+    get_center=False,
+    # Do not use SIVV to check if the image is a fingerprint
+    check_fingerprint=False,
+    # Compute the NFIQ2 quality score
+    compute_nfiq2=True,
+    # No specific PPI, use the default
+    ppi=None,
+)
+
+extractor = nbis.new_nbis_extractor(settings)
 
 # Read the bytes from a file
 image_bytes = open("test_data/p1/p1_1.png", "rb").read()
-minutiae_1 = nbis.extract_minutiae(image=image_bytes, ppi=None)
+minutiae_1 = extractor.extract_minutiae(image_bytes)
 image_bytes = open("test_data/p1/p1_2.png", "rb").read()
-minutiae_2 = nbis.extract_minutiae(image=image_bytes, ppi=None)
+minutiae_2 = extractor.extract_minutiae(image_bytes)
 image_bytes = open("test_data/p1/p1_3.png", "rb").read()
-minutiae_3 = nbis.extract_minutiae(image=image_bytes, ppi=None)
+minutiae_3 = extractor.extract_minutiae(image_bytes)
 
 # Compare the two sets of minutiae
 score = minutiae_1.compare(minutiae_2)
@@ -117,7 +145,7 @@ assert score > 50, "Expected a high similarity score between p1_2 and p1_3"
 # Convert minutiae to ISO/IEC 19794-2:2005 format
 iso_template = minutiae_1.to_iso_19794_2_2005()
 # Load it back
-minutiae_from_iso = nbis.load_iso_19794_2_2005(iso_template)
+minutiae_from_iso = extractor.load_iso_19794_2_2005(iso_template)
 # Compare the original minutiae with the one loaded from ISO template
 for a, b in zip(minutiae_from_iso.get(), minutiae_1.get()):
     assert a.x() == b.x()
@@ -129,9 +157,13 @@ for a, b in zip(minutiae_from_iso.get(), minutiae_1.get()):
     assert abs(a.reliability() - b.reliability()) < 0.1
 
 # Finally we demonstrate loading from a file and comparing a negative match
-minutiae_4 = nbis.extract_minutiae_from_image_file("test_data/p2/p2_1.png", ppi=None)
+minutiae_4 = extractor.extract_minutiae_from_image_file("test_data/p2/p2_1.png")
 score = minutiae_1.compare(minutiae_4)
 assert score < 50, "Expected a low similarity score between p1_1 and p2_1"
+
+# We can access the NFIQ2 quality via:
+nfiq2_quality = minutiae_1.quality()
+assert nfiq2_quality.score > 50, "Expected a positive NFIQ2 quality score"
 ```
 
 ## Contributing
