@@ -23,25 +23,25 @@ def nbis_extractor():
 def minutiae_p1_1(nbis_extractor):
     with open("../../../test_data/p1/p1_1.png", "rb") as f:
         image_bytes = f.read()
-    return nbis_extractor.extract_minutiae(image=image_bytes)
+    return nbis_extractor.extract_minutiae(image_bytes)
 
 @pytest.fixture
 def minutiae_p1_2(nbis_extractor):
     with open("../../../test_data/p1/p1_2.png", "rb") as f:
         image_bytes = f.read()
-    return nbis_extractor.extract_minutiae(image=image_bytes)
+    return nbis_extractor.extract_minutiae(image_bytes)
 
 @pytest.fixture
 def minutiae_p1_3(nbis_extractor):
     with open("../../../test_data/p1/p1_3.png", "rb") as f:
         image_bytes = f.read()
-    return nbis_extractor.extract_minutiae(image=image_bytes)
+    return nbis_extractor.extract_minutiae(image_bytes)
 
 @pytest.fixture
 def minutiae_p2_1(nbis_extractor):
     with open("../../../test_data/p2/p2_1.png", "rb") as f:
         image_bytes = f.read()
-    return nbis_extractor.extract_minutiae(image=image_bytes)
+    return nbis_extractor.extract_minutiae(image_bytes)
 
 # --- Tests ---
 
