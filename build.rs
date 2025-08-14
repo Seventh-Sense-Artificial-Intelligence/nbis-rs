@@ -219,7 +219,10 @@ fn main() {
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
+        // Windows
         .include(dst.join("build/install_staging/nfiq2/include"))
+        // Linux / Mac / Android
+        .include(dst.join("build/install_staging/nfiq2/include/opencv4"))
         // Additional includes for Android
         .include(dst.join("build/opencv_install/sdk/native/jni/include"))
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
