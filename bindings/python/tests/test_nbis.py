@@ -13,6 +13,7 @@ def nbis_extractor():
         min_quality=0.2,
         get_center=False,
         check_fingerprint=False,
+        compute_nfiq2=True,
         ppi=None
     )
     return nbis.new_nbis_extractor(settings)
