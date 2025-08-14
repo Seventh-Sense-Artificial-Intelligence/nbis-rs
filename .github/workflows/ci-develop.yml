@@ -6,11 +6,6 @@ on:
   pull_request:
     branches: [develop]
 
-env:
-  ANDROID_NDK_HOME: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
-  ANDROID_NDK_ROOT: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
-  ANDROID_SDK_ROOT: /home/ubuntu/Android/Sdk
-  
 jobs:
   build-and-test:
     runs-on: Linux
@@ -219,6 +214,10 @@ jobs:
   build-android-bindings:
     name: Build android aar file
     runs-on: Linux
+    env:
+      ANDROID_NDK_HOME: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
+      ANDROID_NDK_ROOT: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
+      ANDROID_SDK_ROOT: /home/ubuntu/Android/Sdk
     needs: [build-and-test]
     
     steps:
