@@ -219,7 +219,7 @@ fn main() {
         .file("ext/nbis/misc/sivv/src/SIVVCore.cpp")
         .file("ext/nbis/misc/sivv/src/sivv_wrapper.cpp")
         .include("ext/nbis/misc/sivv/include")
-        .include(dst.join("build/install_staging/nfiq2/include/opencv4"))
+        .include(dst.join("build/install_staging/nfiq2/include"))
         // Additional includes for Android
         .include(dst.join("build/opencv_install/sdk/native/jni/include"))
         .define("NOVERBOSE", None) // you probably don’t want stdout spam
@@ -267,9 +267,11 @@ fn main() {
         println!("cargo:rustc-link-lib=static=opencv_core");
         println!("cargo:rustc-link-lib=static=FRFXLL_static");
     } else {
-        let lib_src_dir_str = format!("{}/build/lib", &dst.display());
+        // dst.join("build/install_staging/nfiq2/lib");
+        // let lib_src_dir_str = format!("{}/build/lib", &dst.display());
+        let lib_src_dir_str = format!("{}/build/install_staging/nfiq2", &dst.display());
         let lib_src_dir = Path::new(&lib_src_dir_str);
-        let lib_dst_dir = Path::new("ext/opencv_libs");
+        let lib_dst_dir = Path::new("ext/nfiq2_libs");
 
         // Copy the directory
         if let Err(e) = copy_dir_recursive(lib_src_dir, lib_dst_dir) {
@@ -277,9 +279,13 @@ fn main() {
         }
 
         println!("cargo:rustc-link-search=native=C:/msys64/mingw64/lib");
-        println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
+        println!("cargo:rustc-link-search=native={}/lib", &lib_src_dir_str);
+        println!("cargo:rustc-link-search=native={}/x64/mingw/staticlib", &lib_src_dir_str);
         println!("cargo:rustc-link-lib=static=opencv_imgproc4100");
+        println!("cargo:rustc-link-lib=static=opencv_ml4100");
+        println!("cargo:rustc-link-lib=static=opencv_imgcodecs4100");
         println!("cargo:rustc-link-lib=static=opencv_core4100");
+        println!("cargo:rustc-link-lib=static=FRFXLL_static");
         println!("cargo:rustc-link-lib=static=openblas");
         println!("cargo:rustc-link-lib=static=gomp");
         println!("cargo:rustc-link-lib=static=stdc++");
