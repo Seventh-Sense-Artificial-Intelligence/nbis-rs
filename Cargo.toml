@@ -14,7 +14,7 @@ keywords = ["biometrics", "fingerprint", "nbis"]
 categories = ["algorithms", "api-bindings"]
 
 # Optional but recommended:
-exclude = ["/.github", "/examples", "test_data", "scripts"]
+exclude = ["/.github", "/examples", "/test_data", "/scripts"]
 
 [[bin]]
 name = "uniffi-bindgen"
@@ -35,4 +35,3 @@ imageproc = "0.25.0"
 once_cell = "1.21.3"
 thiserror = "2.0.12"
 uniffi = { version = "0.29.3", features = ["cli"] }
-
