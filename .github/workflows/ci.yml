@@ -271,7 +271,7 @@ jobs:
         cd bindings/android
         ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=com.example.test --info
         adb emu kill
-        
+
   upload-to-pypi:
     name: Upload All Wheels to PyPI (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
