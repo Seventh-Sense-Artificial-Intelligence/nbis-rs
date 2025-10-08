@@ -1,10 +1,10 @@
-name: nbis build develop
+name: nbis build main
 
 on:
   push:
-    branches: [develop]
+    branches: [main]
   pull_request:
-    branches: [develop]
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -12,8 +12,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-          clean: false
+      # with:
+      #     clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
     - name: Run rust cargo tests
@@ -31,8 +31,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-        clean: false
+      # with:
+      #     clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
@@ -271,7 +271,41 @@ jobs:
         cd bindings/android
         ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=com.example.test --info
         adb emu kill
-    
-     
+
+  upload-to-pypi:
+    name: Upload All Wheels to PyPI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [Linux, macOS]
+    needs: [test-python-bindings]
+
+    steps:
+    - name: Download built wheel
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/
+
+    - name: Flatten wheel structure
+      run: |
+        mkdir final
+        find dist -name "*.whl" -exec cp {} final/ \;
+
+    - name: Install Twine
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install twine
+
+    - name: Upload to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        source .nbis-venv/bin/activate
+        twine upload final/*
+
 
 

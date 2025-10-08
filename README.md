@@ -17,8 +17,15 @@ To use NBIS-rs, add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-nbis = "0.1.2"
+nbis-rs = { git = "https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs", branch = "main", version = "0.1.2" }
 ```
+Or you can run the following command on the terminal of your new rust project:
+
+cargo add nbis-rs --git https://github.com/Seventh-Sense-Artificial-Intelligence/nbis-rs --branch main
+
+Running the above command will add the above dependency in your Cargo.toml
+
+Now you can use the nbis-rs rust library in your project as mentioned in next section.
 
 ## Usage (Rust)
 
