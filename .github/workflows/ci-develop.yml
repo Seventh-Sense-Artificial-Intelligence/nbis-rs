@@ -18,6 +18,8 @@ jobs:
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
     - name: Run rust cargo tests
       run: cargo test --release --all
+    - name: Run build
+      run: cargo build
 
   build-python-bindings:
     name: Build Python Wheel (${{ matrix.os }})
