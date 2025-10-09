@@ -310,7 +310,7 @@ jobs:
   upload-to-pypi-windows-wheel:
     name: Upload Windows Wheels to PyPI
     runs-on: Linux
-    needs: [test-python-bindings-windows]
+    needs: [test-python-bindings-windows, test-python-bindings]
 
     steps:
     - name: Download built wheel
