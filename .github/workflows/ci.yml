@@ -321,8 +321,8 @@ jobs:
 
     - name: Flatten wheel structure
       run: |
-        mkdir final
-        find dist -name "*.whl" -exec cp {} final/ \;
+        mkdir finalwindows
+        find dist -name "*win_amd64.whl" -exec cp {} finalwindows/ \;
 
     - name: Install Twine
       run: |
