@@ -12,8 +12,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      # with:
-      #     clean: false
+      with:
+         clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
     - name: Run rust cargo tests
@@ -31,8 +31,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      # with:
-      #     clean: false
+      with:
+          clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
@@ -157,6 +157,11 @@ jobs:
         Get-ChildItem -Path "dist" -Filter "*.whl" | ForEach-Object {
             Write-Host "  * $($_.Name)" -ForegroundColor White
         }
+
+        # Check wheel integrity       
+        pip install twine
+        twine check dist/nbis_py*
+
 
     - name: Upload wheel as artifact
       uses: actions/upload-artifact@v4
