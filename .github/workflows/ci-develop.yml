@@ -69,8 +69,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-          clean: false
+      #with:
+      #    clean: false
 
     - name: Download built wheel
       uses: actions/download-artifact@v4
