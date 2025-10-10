@@ -101,11 +101,43 @@ try {
     Write-Host "Removing original wheel file..." -ForegroundColor Cyan
     Remove-Item $wheelPath
 
-    # Repack the wheel
-    Write-Host "Repacking wheel file..." -ForegroundColor Cyan
+    #### Repack the wheel
+    ####Write-Host "Repacking wheel file..." -ForegroundColor Cyan
     
-    # Create the new wheel file using .NET compression
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($wheelUnzipDir, $wheelPath)
+    
+    #### Create the new wheel file using .NET compression
+    ####[System.IO.Compression.ZipFile]::CreateFromDirectory($wheelUnzipDir, $wheelPath)
+
+    # Repack the wheel using Python (ensures forward slashes inside ZIP)
+    Write-Host "Repacking wheel using Python..." -ForegroundColor Cyan
+
+    $tempPy = Join-Path $env:TEMP "repack_wheel.py"
+
+    # Write Python script line by line (no PowerShell indentation preserved)
+    @(
+    'import os, zipfile, sys'
+    'root = sys.argv[1]'
+    'wheel_path = sys.argv[2]'
+    'print(f"Repacking wheel from {root} -> {wheel_path}")'
+    'with zipfile.ZipFile(wheel_path, "w", zipfile.ZIP_DEFLATED) as zf:'
+    '    for dirpath, _, filenames in os.walk(root):'
+    '        for filename in filenames:'
+    '            full_path = os.path.join(dirpath, filename)'
+    '            rel_path = os.path.relpath(full_path, root).replace("\\\\", "/")'
+    '            zf.write(full_path, rel_path)'
+    'print("Repacking complete with forward slashes.")'
+    ) | Set-Content -Path $tempPy -Encoding UTF8
+
+    # Run Python with safe arguments
+    python "$tempPy" "$wheelUnzipDir" "$wheelPath"
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Python repacking failed"
+        exit 1
+    }
+
+    Remove-Item $tempPy -Force
+    Write-Host "✅ Wheel repacked successfully." -ForegroundColor Green
 
     Write-Host "✅ Patched and rebuilt wheel: dist\$($wheelFile.Name)" -ForegroundColor Green
 
