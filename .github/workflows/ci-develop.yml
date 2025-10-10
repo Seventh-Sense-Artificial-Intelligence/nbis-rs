@@ -12,8 +12,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-          clean: false
+      # with:
+      #     clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
     - name: Run rust cargo tests
@@ -31,8 +31,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-        clean: false
+      # with:
+      #   clean: false
     - name: Add cargo to path
       run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
 
