@@ -294,6 +294,7 @@ jobs:
 
     - name: Flatten wheel structure
       run: |
+        rm -rf final
         mkdir final
         find dist -name "*.whl" -exec cp {} final/ \;
 
@@ -326,6 +327,7 @@ jobs:
 
     - name: Flatten wheel structure
       run: |
+        rm -rf finalwindows
         mkdir finalwindows
         find distwin -name "*win_amd64.whl" -exec cp {} finalwindows/ \;
 
