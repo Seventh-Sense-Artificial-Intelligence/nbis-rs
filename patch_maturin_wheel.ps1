@@ -125,7 +125,7 @@ try {
     '            full_path = os.path.join(dirpath, filename)'
     '            rel_path = os.path.relpath(full_path, root).replace("\\\\", "/")'
     '            zf.write(full_path, rel_path)'
-    'print("✅ Repacking complete with forward slashes.")'
+    'print("Repacking complete with forward slashes.")'
     ) | Set-Content -Path $tempPy -Encoding UTF8
 
     # Run Python with safe arguments
