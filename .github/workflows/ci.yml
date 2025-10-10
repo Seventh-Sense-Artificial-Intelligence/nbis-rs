@@ -1,0 +1,350 @@
+name: nbis build main
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: Linux
+
+    steps:
+    - uses: actions/checkout@v4
+      # with:
+      #    clean: false
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
+    - name: Run rust cargo tests
+      run: cargo test --release --all
+    - name: Run build
+      run: cargo build
+
+  build-python-bindings:
+    name: Build Python Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [Linux, macOS]
+    needs: [build-and-test]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          clean: false
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Build wheel
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install maturin
+        maturin build --release --manifest-path Cargo.toml --out dist
+
+    - name: Patch wheel
+      run: ./patch_maturin_wheel.sh
+
+    - name: Check wheel integrity
+      run: |
+        source .nbis-venv/bin/activate
+        pip install twine
+        twine check dist/nbis_py*
+
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+            name: ${{ runner.os }}-wheel
+            path: dist/*.whl
+  
+  test-python-bindings:
+    name: Run Pytest on Python Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [Linux, macOS]
+    needs: [build-python-bindings]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          clean: false
+
+    - name: Download built wheel
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/
+
+    - name: Install wheel and test dependencies
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install dist/*.whl
+        pip install -r bindings/python/tests/requirements.txt
+
+    - name: Run pytest
+      run: |
+        source .nbis-venv/bin/activate
+        cd bindings/python/tests
+        pytest -v
+    
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/*.whl
+        overwrite: true
+
+  build-python-bindings-windows:
+    name: Build Python Wheel (Windows)
+    runs-on: Windows
+    
+    needs: [build-and-test]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          clean: false
+
+    - name: Set environment variable for building wheel
+      shell: powershell
+      run: |
+        $projectPath = $env:GITHUB_WORKSPACE
+        echo "RUSTFLAGS=-L $projectPath\ext\opencv_libs" >> $env:GITHUB_ENV
+
+    - name: Build python wheel
+      shell: powershell
+      run: |
+        $pythonVersion = python --version
+        Write-Host "Found Python: $pythonVersion"
+        $env:PATH = "$env:USERPROFILE\.cargo\bin;C:\msys64\mingw64\bin;$env:PATH"
+        Write-Host $env:PATH
+        rustc --version
+        cargo --version  
+        
+        if (Test-Path "C:\msys64\mingw64\bin") {
+          Write-Host "C:\msys64\mingw64\bin available in CI"      
+        
+          $venvActivate = "C:\Users\Administrator\.venv\Scripts\Activate.ps1"
+          Write-Host "Activating virtual environment..."
+          . $venvActivate
+          pip install maturin
+
+          Write-Host "Building wheel with maturin..."
+          maturin build --release --manifest-path Cargo.toml --out dist
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "Maturin build failed"
+              exit 1
+          }
+
+          Write-Host "Running wheel patch script..."
+          & ".\patch_maturin_wheel.ps1"
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "Wheel patching failed"
+              exit 1
+          }
+        }
+
+        Write-Host "✅ Build completed successfully!" -ForegroundColor Green
+        Write-Host "Wheel file is available in the dist/ directory" -ForegroundColor Cyan
+
+        # List the created wheel files
+        Write-Host "`nGenerated wheel files:" -ForegroundColor Yellow
+        Get-ChildItem -Path "dist" -Filter "*.whl" | ForEach-Object {
+            Write-Host "  * $($_.Name)" -ForegroundColor White
+        }
+
+        # Check wheel integrity       
+        pip install twine
+        twine check dist/nbis_py*
+
+
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+            name: ${{ runner.os }}-wheel
+            path: dist/*.whl
+
+  test-python-bindings-windows:
+    name: Run Pytest on Python Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [Windows]
+    needs: [build-python-bindings-windows]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          clean: false
+
+    - name: Download built wheel
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/
+
+    - name: Install wheel and test dependencies
+      run: |
+        $pythonVersion = python --version
+        Write-Host "Found Python: $pythonVersion"
+        $env:PATH = "c:\Users\Administrator\AppData\Local\Programs\Python\Python313\;$env:PATH"
+        Write-Host $env:PATH
+        $pythonVersion = python --version
+        Write-Host "Found Python: $pythonVersion"
+        if (Test-Path ".nbis-venv") {
+          Remove-Item -Recurse -Force ".nbis-venv"
+        }
+        python -m venv .nbis-venv
+        . ".nbis-venv\Scripts\Activate.ps1"
+        $wheel = Get-ChildItem dist\*.whl | Select-Object -First 1
+        pip install $wheel.FullName
+        pip install -r bindings/python/tests/requirements.txt
+
+    - name: Run pytest
+      run: |
+        & ".nbis-venv\Scripts\Activate.ps1"
+        cd bindings/python/tests
+        pytest -v
+    
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/*.whl
+        overwrite: true
+
+  build-android-bindings:
+    name: Build android aar file
+    runs-on: Linux
+    env:
+      ANDROID_NDK_HOME: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
+      ANDROID_NDK_ROOT: /home/ubuntu/Android/Sdk/ndk/26.1.10909125
+      ANDROID_SDK_ROOT: /home/ubuntu/Android/Sdk
+    needs: [build-and-test]
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          clean: false
+    - name: Add cargo to path
+      run: echo "/home/ubuntu/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Update PATH
+      run: echo "/home/ubuntu/Android/Sdk/platform-tools" >> $GITHUB_PATH
+
+    - name: Build android aar file
+      run: ./build_android.sh
+
+    - name: Upload android aar as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nbis-sdk.aar
+        path: dist/*.aar
+
+  test-android-aar:
+    name: Test android aar file
+    runs-on: macOS
+    needs: [build-android-bindings]
+   
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          clean: false
+    - name: Download built aar file
+      uses: actions/download-artifact@v4
+      with:
+        name: nbis-sdk.aar
+        path: bindings/android/app/libs
+
+    - name: Set ANDROID env vars and add to PATH
+      run: |
+        echo "ANDROID_SDK_ROOT=$HOME/Library/Android/sdk" >> $GITHUB_ENV
+        echo "$HOME/Library/Android/sdk/emulator" >> $GITHUB_PATH
+        echo "$HOME/Library/Android/sdk/platform-tools" >> $GITHUB_PATH
+        echo "$HOME/Library/Android/sdk/tools" >> $GITHUB_PATH
+        echo "$HOME/Library/Android/sdk/tools/bin" >> $GITHUB_PATH 
+
+    - name: Start arm64 emulator and run the tests
+      run: |
+        emulator -avd arm64Emu -no-window -no-audio -gpu swiftshader_indirect &
+        adb wait-for-device
+        cd bindings/android
+        ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=com.example.test --info
+        adb emu kill
+
+  upload-to-pypi:
+    name: Upload All Wheels to PyPI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [Linux, macOS]
+    needs: [test-python-bindings]
+
+    steps:
+    - name: Download built wheel
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ runner.os }}-wheel
+        path: dist/
+
+    - name: Flatten wheel structure
+      run: |
+        rm -rf final
+        mkdir final
+        find dist -name "*.whl" -exec cp {} final/ \;
+
+    - name: Install Twine
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install twine
+
+    - name: Upload to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        source .nbis-venv/bin/activate
+        twine upload final/*
+
+  upload-to-pypi-windows-wheel:
+    name: Upload Windows Wheels to PyPI
+    runs-on: Linux
+    needs: [test-python-bindings-windows, test-python-bindings]
+
+    steps:
+    - name: Download built wheel
+      uses: actions/download-artifact@v4
+      with:
+        name: Windows-wheel
+        path: distwin/
+
+    - name: Flatten wheel structure
+      run: |
+        rm -rf finalwindows
+        mkdir finalwindows
+        find distwin -name "*win_amd64.whl" -exec cp {} finalwindows/ \;
+
+    - name: Install Twine
+      run: |
+        rm -rf .nbis-venv
+        python3 -m venv .nbis-venv
+        source .nbis-venv/bin/activate
+        pip install twine
+
+    - name: Upload to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        source .nbis-venv/bin/activate
+        twine upload finalwindows/*
+
+
+

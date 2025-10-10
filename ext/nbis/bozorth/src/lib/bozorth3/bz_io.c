@@ -96,6 +96,10 @@ of the software.
 #include <sys/time.h>
 #include <bozorth.h>
 
+int max_minutiae = 1000;
+int verbose_main = 0;
+int verbose_load = 0;
+
 /***********************************************************************/
 int parse_line_range( const char * sb, int * begin, int * end )
 {

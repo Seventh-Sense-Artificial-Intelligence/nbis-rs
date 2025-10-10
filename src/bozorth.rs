@@ -1,14 +1,14 @@
 use std::cmp::min;
 
-use crate::ffi::{self, ensure_bozorth_inited};
+use crate::ffi_nbis::{self};
 
-use ffi::{
+use ffi_nbis::{
     xyt_struct,           // Bozorth input layout
     MAX_BOZORTH_MINUTIAE, // ‑‑”‑‑
 };
 
 /// Idiomatic Rust container for a minutiae set
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct MinutiaeSet {
     pub xs: Vec<i32>,
     pub ys: Vec<i32>,
@@ -38,8 +38,7 @@ impl MinutiaeSet {
 
 /// Safe wrapper around the C implementation.
 pub(crate) fn bz_match_score(probe: &MinutiaeSet, gallery: &MinutiaeSet) -> i32 {
-    ensure_bozorth_inited();
     let p_c = probe.to_c_struct();
     let g_c = gallery.to_c_struct();
-    unsafe { ffi::bozorth_main(&p_c, &g_c) }
+    unsafe { ffi_nbis::bozorth_main(&p_c, &g_c) }
 }
