@@ -310,19 +310,19 @@ jobs:
   upload-to-pypi-windows-wheel:
     name: Upload Windows Wheels to PyPI
     runs-on: Linux
-    needs: [test-python-bindings-windows]
+    needs: [test-python-bindings-windows, test-python-bindings]
 
     steps:
     - name: Download built wheel
       uses: actions/download-artifact@v4
       with:
         name: Windows-wheel
-        path: dist/
+        path: distwin/
 
     - name: Flatten wheel structure
       run: |
-        mkdir final
-        find dist -name "*.whl" -exec cp {} final/ \;
+        mkdir finalwindows
+        find distwin -name "*win_amd64.whl" -exec cp {} finalwindows/ \;
 
     - name: Install Twine
       run: |
@@ -337,7 +337,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         source .nbis-venv/bin/activate
-        twine upload final/*
+        twine upload finalwindows/*
 
 
 
